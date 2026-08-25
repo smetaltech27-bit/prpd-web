@@ -105,6 +105,17 @@ Import order is `vendors`, `raw_materials`, then `factory_supplies`. Load CSVs i
 staging schema/table first, validate counts and foreign keys, and only then merge into
 public tables. Do not import directly from the browser with the public anon key.
 
+Generate the ignored transactional master-data import after verifying the export:
+
+```powershell
+python scripts/generate-import-sql.py
+supabase db query --linked --file supabase/seed/generated/import-masters.sql
+```
+
+The generated SQL uses temporary staging tables, validates source counts and vendor
+foreign keys, and then performs idempotent upserts. It does not delete remote rows and
+must never be committed because it contains vendor and price data.
+
 ### Legacy PR/PO history
 
 The history exporter preserves the original number in `legacy_number` and proposes a
