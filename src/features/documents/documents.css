@@ -1,0 +1,38 @@
+.document-center { color: #102a43; }
+.document-center header h1 { margin: .2rem 0; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+.document-center header p { margin: .35rem 0 1.2rem; color: #607d99; }
+.document-center__eyebrow { color: #0b73dc; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.document-search { display: flex; align-items: center; gap: .65rem; border: 1px solid #bdd8f4; border-radius: .85rem; background: white; padding: .45rem .45rem .45rem .85rem; box-shadow: 0 12px 30px #0b5ed714; }
+.document-search:focus-within { border-color: #1685ed; box-shadow: 0 0 0 3px #1685ed24; }
+.document-search input { min-width: 0; flex: 1; border: 0; outline: 0; font: inherit; }
+.document-search button, .document-action, .document-modal footer button { display: inline-flex; align-items: center; justify-content: center; gap: .42rem; border: 1px solid #0b73dc; border-radius: .6rem; background: #0b73dc; color: white; padding: .65rem .9rem; font-weight: 800; cursor: pointer; }
+.document-search button:disabled { opacity: .45; cursor: not-allowed; }
+.document-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.document-card { min-width: 0; border: 1px solid #cfe1f2; border-radius: 1rem; background: white; padding: 1rem; box-shadow: 0 10px 28px #1a5f9a10; }
+.document-card--missing { background: #f8fafc; }
+.document-card__status { display: flex; align-items: center; gap: .4rem; color: #16834b; font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+.document-card__status span { width: .55rem; height: .55rem; border-radius: 50%; background: #21b969; box-shadow: 0 0 0 4px #21b9691c; }
+.document-card--missing .document-card__status { color: #8b5b12; }
+.document-card--missing .document-card__status span { background: #efa927; box-shadow: 0 0 0 4px #efa9271c; }
+.document-card h2 { min-height: 2.4em; margin: .6rem 0; font-size: 1.05rem; }
+.document-card > p { color: #6b7e90; }
+.document-card__preview { display: grid; place-items: center; height: 150px; overflow: hidden; border: 1px solid #dce8f4; border-radius: .65rem; background: #eef5fc; }
+.document-card__preview img { width: 100%; height: 100%; object-fit: contain; }
+.document-card dl { display: grid; gap: .45rem; margin: .8rem 0; font-size: .8rem; }
+.document-card dl div { display: flex; justify-content: space-between; gap: .5rem; }
+.document-card dt { color: #71879a; }.document-card dd { margin: 0; font-weight: 700; }
+.document-card__actions { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.document-action--secondary { background: white; color: #0b73dc; }
+.document-welcome { display: grid; place-items: center; gap: .5rem; min-height: 220px; color: #6b8196; }
+.document-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); background: #08294dcc; backdrop-filter: blur(8px); }
+.document-modal__panel { display: flex; flex-direction: column; width: min(1050px, 100%); min-height: 0; max-height: calc(100svh - 2rem); overflow: hidden; border: 1px solid #83bced; border-radius: 1rem; background: white; box-shadow: 0 24px 80px #00152b66; }
+.document-modal__panel > header, .document-modal__panel > footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex: 0 0 auto; padding: .8rem 1rem; }
+.document-modal__panel > header { border-bottom: 1px solid #dce8f3; }
+.document-modal__panel > header span { color: #0b73dc; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.document-modal__panel > header h2 { margin: .15rem 0 0; }
+.document-modal__panel > header button { display: grid; place-items: center; border: 0; border-radius: 50%; background: #edf5fd; color: #163b5e; padding: .5rem; cursor: pointer; }
+.document-modal__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1rem; background: #e9f2fa; text-align: center; }
+.document-modal__body img { display: block; max-width: 100%; height: auto; margin: 0 auto; background: white; box-shadow: 0 10px 40px #173d5e28; }
+.document-modal__panel > footer { border-top: 1px solid #dce8f3; color: #5f7890; font-size: .8rem; text-transform: capitalize; }
+@media (min-width: 768px) { .document-modal { align-items: center; } }
+@media (max-width: 640px) { .document-search { align-items: stretch; flex-wrap: wrap; } .document-search input { min-width: calc(100% - 2rem); } .document-search button { width: 100%; } .document-card__actions { grid-template-columns: 1fr; } }

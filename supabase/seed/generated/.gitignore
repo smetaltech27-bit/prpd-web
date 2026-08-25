@@ -1,0 +1,4 @@
+# Legacy master data, prices, vendors, history, and document paths are not source code.
+# Keep generated exports out of a public GitHub repository.
+*
+!.gitignore
