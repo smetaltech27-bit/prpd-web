@@ -15,6 +15,7 @@ const expectedOrder = [
   '202608250001_core_schema.sql',
   '202608250002_functions_and_audit.sql',
   '202608250003_rls_and_storage.sql',
+  '202608250004_harden_function_grants.sql',
 ];
 const errors = [];
 

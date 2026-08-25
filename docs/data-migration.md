@@ -32,6 +32,8 @@ Apply in filename order after the target project and backup are confirmed:
    `create_purchase_requests` RPC.
 3. `202608250003_rls_and_storage.sql` removes broad grants, enables RLS, and creates
    three private Storage buckets and policies.
+4. `202608250004_harden_function_grants.sql` explicitly removes unauthenticated
+   function execution and keeps the two browser RPCs available only after Supabase Auth.
 
 Do not apply these migrations to production first. Use a fresh staging project, inspect
 the SQL diff, import a sample, exercise RLS as both roles, and take a production backup

@@ -19,8 +19,12 @@ api_url = "http://127.0.0.1"
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://127.0.0.1:5173"]
+site_url = "https://smetaltech27-bit.github.io/prpd-web/"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://smetaltech27-bit.github.io/prpd-web/"
+]
 jwt_expiry = 3600
 # Global signup remains enabled so passwordless anonymous Auth sessions can be issued.
 # Public email/password registration is disabled separately below.
@@ -31,7 +35,13 @@ minimum_password_length = 12
 [auth.email]
 enable_signup = false
 enable_confirmations = true
+max_frequency = "1m"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
 
 [storage]
 enabled = true
-file_size_limit = "25MiB"
+file_size_limit = "50MiB"
