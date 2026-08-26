@@ -232,6 +232,23 @@ h1, h2, h3, p { margin-top: 0; }
 .security-note { margin-top: 17px; padding: 11px; border-radius: 8px; color: #6a7e94; background: #f2f7fc; font-size: 9px; line-height: 1.55; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid #e4edf6; }
 
+.auth-setup-shell { min-height: 100svh; display: grid; place-items: center; padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 20% 10%, rgba(57, 176, 242, .24), transparent 34%), linear-gradient(145deg, #f7fbff, #eaf4ff); }
+.auth-setup-card { width: min(520px, 100%); padding: 28px; border: 1px solid rgba(183, 211, 239, .88); border-radius: 20px; background: rgba(255, 255, 255, .96); box-shadow: 0 24px 70px rgba(19, 71, 130, .16); }
+.auth-setup-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; padding-bottom: 20px; border-bottom: 1px solid #e4edf6; }
+.auth-setup-brand strong, .auth-setup-brand span { display: block; }
+.auth-setup-brand strong { color: var(--blue); font-size: 19px; letter-spacing: .08em; }
+.auth-setup-brand span { margin-top: 2px; color: var(--muted); font-size: 10px; }
+.auth-setup-heading { display: flex; align-items: center; gap: 14px; margin-bottom: 15px; }
+.auth-setup-heading .eyebrow { margin-bottom: 4px; }
+.auth-setup-heading h1, .auth-setup-status h1 { margin: 0; color: var(--navy); font-size: clamp(22px, 5vw, 28px); line-height: 1.22; }
+.auth-setup-form .field-label { margin-top: 15px; }
+.auth-setup-form .security-note { margin-bottom: 16px; }
+.auth-setup-status { min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.auth-setup-status .modal-icon { width: 54px; height: 54px; margin-bottom: 16px; }
+.auth-setup-status p { max-width: 350px; margin: 10px auto 20px; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.modal-icon.success { color: var(--success); background: #e8f8f2; }
+.modal-icon.danger { color: var(--danger); background: #fcedef; }
+
 .sidebar-backdrop { display: none; }
 
 @media (max-width: 1120px) {
@@ -285,6 +302,8 @@ h1, h2, h3, p { margin-top: 0; }
   .modal-header, .modal-body { padding-inline: 16px; }
   .modal-footer { padding-inline: 16px; }
   .modal-footer .button { flex: 1; }
+  .auth-setup-card { padding: 22px 16px; border-radius: 16px; }
+  .auth-setup-heading { align-items: flex-start; }
 }
 
 @media print {

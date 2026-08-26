@@ -12,6 +12,7 @@
 - PR History แยก Raw Material และ Equipment
 - Settings สำหรับ Master Data และ Document Files
 - Settings แสดงในเมนูแต่ต้องปลดล็อกผ่าน Supabase Auth; ไม่มี Password ใน Source Code
+- Invite/Recovery link ของ Settings Admin เปิดหน้า One-time Password Setup ที่ตรวจอีเมลและ Role ก่อนบันทึกรหัสใหม่
 - Responsive UI โทนน้ำเงินสว่าง พร้อม Modal ที่รองรับ iOS Safe Area
 
 ## เริ่มใช้งาน Local

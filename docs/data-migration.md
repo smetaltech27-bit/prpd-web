@@ -208,6 +208,12 @@ Recommended setup:
    sign-in. On lock, inactivity timeout, refresh, or browser close, sign the admin out and
    create a new anonymous session.
 
+The invite/recovery redirect is handled by a dedicated one-time setup screen. It accepts
+only Supabase `invite` or `recovery` URL fragments, validates the configured admin email
+and `settings_admin` role, then calls `auth.updateUser()` in the invite session. After a
+successful password update it signs that session out and returns to the locked Settings
+screen. Never copy the password into the Dashboard, SQL Editor, source code, or chat.
+
 Use session-only browser storage for the admin session to satisfy the “refresh/close locks
 Settings” requirement. The 15-minute inactivity lock and five-attempt UI cooldown are
 frontend behavior; Supabase Auth rate limits remain the authoritative server protection.

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { initialSettingsAuthFlow } from '../services/settingsInvite'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
@@ -25,7 +26,7 @@ export const settingsSupabase: SupabaseClient | null =
         auth: {
           persistSession: false,
           autoRefreshToken: true,
-          detectSessionInUrl: false,
+          detectSessionInUrl: Boolean(initialSettingsAuthFlow),
           storageKey: 'prpd-settings-auth',
         },
       })

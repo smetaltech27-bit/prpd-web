@@ -7,14 +7,17 @@ import { DocumentSearch } from '../components/DocumentSearch'
 import { WorkOrderPage } from '../pages/WorkOrderPage'
 import { HistoryPage } from '../pages/HistoryPage'
 import { SettingsPage } from '../pages/SettingsPage'
+import { SettingsPasswordSetupPage } from '../pages/SettingsPasswordSetupPage'
 import { ensureAppSession } from '../services/appSession'
 import { listFactorySupplies, listRawMaterials } from '../services/prpdRepository'
+import { initialSettingsAuthFlow } from '../services/settingsInvite'
 
 export function App() {
   const [rawCatalog, setRawCatalog] = useState(rawMaterials)
   const [equipmentCatalog, setEquipmentCatalog] = useState(equipmentItems)
 
   useEffect(() => {
+    if (initialSettingsAuthFlow) return
     void ensureAppSession().then(async (state) => {
       if (state !== 'ready') return
       try {
@@ -26,6 +29,8 @@ export function App() {
       }
     })
   }, [])
+
+  if (initialSettingsAuthFlow) return <SettingsPasswordSetupPage />
 
   return <AppShell><Routes>
     <Route path="/" element={<Navigate to="/raw-material-pr" replace />} />
