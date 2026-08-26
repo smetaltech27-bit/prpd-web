@@ -6,7 +6,8 @@ import { validateNewSettingsPassword } from '../services/settingsInvite'
 type SetupState = 'checking' | 'ready' | 'invalid' | 'saving' | 'success'
 
 function returnToSettings() {
-  const destination = new URL(import.meta.env.BASE_URL, window.location.origin)
+  const destination = new URL(window.location.href)
+  destination.search = ''
   destination.hash = '/settings'
   window.location.replace(destination.toString())
 }
