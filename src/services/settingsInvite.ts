@@ -11,10 +11,7 @@ export const initialSettingsAuthFlow = typeof window === 'undefined'
   : detectSettingsAuthFlow(window.location.hash)
 
 export function validateNewSettingsPassword(password: string, confirmation: string): string {
-  if (password.length < 12) return 'รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร'
-  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-    return 'รหัสผ่านต้องมีตัวพิมพ์เล็ก ตัวพิมพ์ใหญ่ และตัวเลข'
-  }
+  if (password.length < 6) return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
   if (password !== confirmation) return 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'
   return ''
 }

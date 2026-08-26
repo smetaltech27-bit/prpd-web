@@ -92,7 +92,7 @@ export function SettingsPasswordSetupPage() {
             <label className="field-label" htmlFor="new-settings-password">Password ใหม่</label>
             <div className={`password-field ${error ? 'has-error' : ''}`}>
               <KeyRound size={18} />
-              <input id="new-settings-password" type={visible ? 'text' : 'password'} value={password} onChange={(event) => { setPassword(event.target.value); setError('') }} autoComplete="new-password" placeholder="อย่างน้อย 12 ตัวอักษร" disabled={state === 'saving'} autoFocus />
+              <input id="new-settings-password" type={visible ? 'text' : 'password'} value={password} onChange={(event) => { setPassword(event.target.value); setError('') }} autoComplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร" disabled={state === 'saving'} autoFocus />
               <button type="button" onClick={() => setVisible((value) => !value)} aria-label={visible ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>{visible ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </div>
             <label className="field-label" htmlFor="confirm-settings-password">ยืนยัน Password</label>
@@ -102,7 +102,7 @@ export function SettingsPasswordSetupPage() {
               <span aria-hidden="true" />
             </div>
             {error && <p className="field-error" role="alert">{error}</p>}
-            <div className="security-note">ใช้ตัวพิมพ์เล็ก ตัวพิมพ์ใหญ่ ตัวเลข และความยาวอย่างน้อย 12 ตัวอักษร</div>
+            <div className="security-note">Password ต้องมีความยาวอย่างน้อย 6 ตัวอักษร</div>
             <button className="button button-primary button-full" type="submit" disabled={state === 'saving'}>{state === 'saving' ? 'กำลังตั้ง Password…' : 'บันทึก Password'}</button>
           </form>
         </>}

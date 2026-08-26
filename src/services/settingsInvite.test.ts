@@ -12,9 +12,8 @@ describe('detectSettingsAuthFlow', () => {
 
 describe('validateNewSettingsPassword', () => {
   it('requires a strong matching password', () => {
-    expect(validateNewSettingsPassword('Short1', 'Short1')).toContain('12')
-    expect(validateNewSettingsPassword('alllowercase123', 'alllowercase123')).toContain('ตัวพิมพ์ใหญ่')
-    expect(validateNewSettingsPassword('StrongPassword123', 'StrongPassword124')).toContain('ไม่ตรงกัน')
-    expect(validateNewSettingsPassword('StrongPassword123', 'StrongPassword123')).toBe('')
+    expect(validateNewSettingsPassword('12345', '12345')).toContain('6')
+    expect(validateNewSettingsPassword('123456', '654321')).toContain('ไม่ตรงกัน')
+    expect(validateNewSettingsPassword('123456', '123456')).toBe('')
   })
 })
