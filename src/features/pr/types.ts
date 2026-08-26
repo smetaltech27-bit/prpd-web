@@ -16,7 +16,10 @@ export interface PrCatalogItem {
 }
 
 export interface PrLineItem extends PrCatalogItem {
+  lineId: string
   quantity: number
+  fgQuantity?: number
+  dueDate?: string
 }
 
 export interface PrVendorGroup {

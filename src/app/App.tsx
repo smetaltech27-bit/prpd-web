@@ -11,10 +11,11 @@ import { SettingsPasswordSetupPage } from '../pages/SettingsPasswordSetupPage'
 import { ensureAppSession } from '../services/appSession'
 import { listFactorySupplies, listRawMaterials } from '../services/prpdRepository'
 import { initialSettingsAuthFlow } from '../services/settingsInvite'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 export function App() {
-  const [rawCatalog, setRawCatalog] = useState(rawMaterials)
-  const [equipmentCatalog, setEquipmentCatalog] = useState(equipmentItems)
+  const [rawCatalog, setRawCatalog] = useState(isSupabaseConfigured ? [] : rawMaterials)
+  const [equipmentCatalog, setEquipmentCatalog] = useState(isSupabaseConfigured ? [] : equipmentItems)
 
   useEffect(() => {
     if (initialSettingsAuthFlow) return
@@ -22,10 +23,11 @@ export function App() {
       if (state !== 'ready') return
       try {
         const [raw, equipment] = await Promise.all([listRawMaterials(), listFactorySupplies()])
-        if (raw.length) setRawCatalog(raw)
-        if (equipment.length) setEquipmentCatalog(equipment)
+        setRawCatalog(raw)
+        setEquipmentCatalog(equipment)
       } catch {
-        // Keep the verified demo catalog visible while connection errors are surfaced in the shell.
+        setRawCatalog([])
+        setEquipmentCatalog([])
       }
     })
   }, [])

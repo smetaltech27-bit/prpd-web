@@ -85,7 +85,13 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
       if (!pdfWindow) setPreviewError('Browser ปิดกั้นหน้าต่าง PDF กรุณาอนุญาต Pop-up แล้วลองอีกครั้ง')
       return
     }
-    printImage(previewUrl, { itemFg: selected.itemFg, label: meta.label, orientation })
+    printImage(previewUrl, {
+      itemFg: selected.itemFg,
+      label: meta.label,
+      orientation,
+      marginMm: 0,
+      fit: kind === 'inprocess' ? 'fill' : 'contain',
+    })
   }
 
   return (

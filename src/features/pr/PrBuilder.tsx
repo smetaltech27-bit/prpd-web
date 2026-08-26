@@ -51,7 +51,7 @@ export function PrBuilder({
       const existing = current.find((line) => line.id === item.id)
       return existing
         ? current.map((line) => line.id === item.id ? { ...line, quantity: line.quantity + 1 } : line)
-        : [...current, { ...item, quantity: item.usage || 1 }]
+        : [...current, { ...item, lineId: item.id, quantity: item.usage || 1 }]
     })
   }
 

@@ -37,6 +37,9 @@ export interface CreatePrInput {
     unitPrice?: number
     dueDate?: string
     comment?: string
+    vendorName?: string
+    namePart?: string
+    spec?: string
   }>
 }
 
@@ -44,7 +47,55 @@ export interface CreatedPr {
   id: string
   pr_number: string
   vendor_id: string
+  vendor_name: string
   line_count: number
+}
+
+export interface PrHistoryLine {
+  lineId: string
+  prId: string
+  prNumber: string
+  requestKind: 'raw_material' | 'factory_supply'
+  requestDate: string
+  vendorName: string
+  itemFg: string
+  codeOrderRm: string
+  namePart: string
+  materialType: string
+  spec: string
+  fgQty: number | null
+  quantity: number
+  unitPrice: number
+  dueDate: string
+  comment: string
+}
+
+interface PrHistoryRpcRow {
+  line_id: string
+  pr_id: string
+  pr_number: string
+  request_kind: 'raw_material' | 'factory_supply'
+  request_date: string
+  vendor_name: string
+  item_fg: string | null
+  code_order_rm: string | null
+  name_part: string
+  material_or_supply_type: string | null
+  spec: string | null
+  fg_qty: number | null
+  quantity: number
+  unit_price: number | null
+  due_date: string | null
+  comment: string | null
+}
+
+export interface PrHistoryFilters {
+  kind: 'raw_material' | 'factory_supply'
+  requestDate?: string
+  prNumber?: string
+  vendor?: string
+  itemFg?: string
+  codeOrderRm?: string
 }
 
 export interface ActiveDocumentAsset extends PrivateDocumentLocation {
@@ -151,6 +202,9 @@ export async function createPurchaseRequests(input: CreatePrInput): Promise<Crea
       unit_price: item.unitPrice ?? null,
       due_date: item.dueDate ?? null,
       comment: item.comment ?? null,
+      vendor_name: item.vendorName ?? null,
+      name_part: item.namePart ?? null,
+      spec: item.spec ?? null,
     })),
     p_request_date: input.requestDate,
     p_due_date: input.dueDate ?? null,
@@ -159,6 +213,37 @@ export async function createPurchaseRequests(input: CreatePrInput): Promise<Crea
   })
   if (error) throw error
   return (data ?? []) as CreatedPr[]
+}
+
+export async function searchPrHistory(filters: PrHistoryFilters): Promise<PrHistoryLine[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase.rpc('search_pr_history', {
+    p_request_kind: filters.kind,
+    p_request_date: filters.requestDate || null,
+    p_pr_number: filters.prNumber?.trim() || null,
+    p_vendor: filters.vendor?.trim() || null,
+    p_item_fg: filters.itemFg?.trim() || null,
+    p_code_order_rm: filters.codeOrderRm?.trim() || null,
+  })
+  if (error) throw error
+  return ((data ?? []) as PrHistoryRpcRow[]).map((row) => ({
+    lineId: row.line_id,
+    prId: row.pr_id,
+    prNumber: row.pr_number,
+    requestKind: row.request_kind,
+    requestDate: row.request_date,
+    vendorName: row.vendor_name,
+    itemFg: row.item_fg ?? '',
+    codeOrderRm: row.code_order_rm ?? '',
+    namePart: row.name_part,
+    materialType: row.material_or_supply_type ?? '',
+    spec: row.spec ?? '',
+    fgQty: row.fg_qty == null ? null : Number(row.fg_qty),
+    quantity: Number(row.quantity),
+    unitPrice: Number(row.unit_price ?? 0),
+    dueDate: row.due_date ?? '',
+    comment: row.comment ?? '',
+  }))
 }
 
 export async function findActiveDocuments(itemFg: string): Promise<ActiveDocumentAsset[]> {

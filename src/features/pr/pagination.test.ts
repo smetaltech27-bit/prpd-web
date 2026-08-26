@@ -6,6 +6,7 @@ import type { PrLineItem } from './types'
 function items(count: number, vendor = 'Vendor A'): PrLineItem[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `${vendor}-${index}`,
+    lineId: `${vendor}-${index}`,
     itemFg: `FG-${index + 1}`,
     namePart: `Part ${index + 1}`,
     vendor,

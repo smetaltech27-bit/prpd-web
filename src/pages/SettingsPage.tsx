@@ -17,7 +17,7 @@ export function SettingsPage() {
   const [query, setQuery] = useState('')
   const [editorOpen, setEditorOpen] = useState(false)
   const [form, setForm] = useState<MaterialItem>(emptyItem)
-  const [rows, setRows] = useState({ raw: rawMaterials, equipment: equipmentItems })
+  const [rows, setRows] = useState(isSupabaseConfigured ? { raw: [], equipment: [] } : { raw: rawMaterials, equipment: equipmentItems })
   const [savedNotice, setSavedNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const activeRows = tab === 'raw' ? rows.raw : rows.equipment
@@ -33,7 +33,7 @@ export function SettingsPage() {
     if (!isSupabaseConfigured) return
     void Promise.all([listRawMaterials(), listFactorySupplies()]).then(([raw, equipment]) => {
       setRows({ raw, equipment })
-    }).catch(() => setSavedNotice('เชื่อมต่อ Supabase ไม่สำเร็จ จึงแสดงข้อมูลตัวอย่าง'))
+    }).catch(() => setSavedNotice('เชื่อมต่อ Supabase ไม่สำเร็จ จึงไม่แสดงข้อมูลตัวอย่างแทนข้อมูลจริง'))
   }, [])
 
   async function saveItem(event: FormEvent) {

@@ -87,6 +87,8 @@ export function printNode(node: HTMLElement, options: PrintOptions = {}): void {
 export interface PrintImageOptions extends PrintOptions {
   itemFg?: string
   label?: string
+  marginMm?: number
+  fit?: 'contain' | 'fill'
 }
 
 export function printImage(imageUrl: string, options: PrintImageOptions = {}): void {
@@ -95,14 +97,16 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
     label = 'Production document',
     title = [label, itemFg].filter(Boolean).join(' · '),
     orientation = 'portrait',
+    marginMm = 0,
+    fit = 'contain',
   } = options
   const printWindow = openPrintWindow(title)
   const style = printWindow.document.createElement('style')
   style.textContent = `${PRINT_BASE_CSS}
-    @page { size: A4 ${orientation}; margin: 8mm; }
+    @page { size: A4 ${orientation}; margin: ${marginMm}mm; }
     html, body { width: 100%; height: 100%; }
     body { display: grid; place-items: center; font-family: Arial, sans-serif; }
-    img { width: 100%; height: 100%; object-fit: contain; }
+    img { width: 100%; height: 100%; object-fit: ${fit}; }
   `
   const image = printWindow.document.createElement('img')
   image.alt = title
