@@ -1,0 +1,22 @@
+{
+  "name": "prpd-document-gateway",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "vars": {
+    "SUPABASE_URL": "https://gqculqpufpjvwofzzwks.supabase.co",
+    "ALLOWED_ORIGINS": "https://smetaltech27-bit.github.io,http://localhost:5173,http://127.0.0.1:5173",
+    "MAX_UPLOAD_BYTES": "26214400"
+  },
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS",
+      "bucket_name": "prpd-documents"
+    }
+  ]
+}

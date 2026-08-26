@@ -1,10 +1,11 @@
 import { Archive, FileCheck2, FileImage, FileUp, LockKeyhole, Pencil, Plus, Save, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { rawMaterials, equipmentItems, documents } from '../app/mockData'
+import { rawMaterials, equipmentItems } from '../app/mockData'
 import { PageHeader } from '../components/AppShell'
 import { lockSettings } from '../services/settingsAccess'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { deactivateMasterItem, listFactorySupplies, listRawMaterials, saveMasterItem, uploadDocumentAsset, type DocumentAssetType } from '../services/prpdRepository'
+import { deactivateMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, saveMasterItem, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType } from '../services/prpdRepository'
+import { fetchPrivateDocument } from '../services/documentStorage'
 import type { MaterialItem } from '../types/domain'
 
 type SettingsTab = 'raw' | 'equipment' | 'documents'
@@ -104,7 +105,7 @@ export function SettingsPage() {
         </form>
       </aside>}
     </div>}
-    {tab === 'documents' && <DocumentManager />}
+    {tab === 'documents' && <DocumentManager items={rows.raw} />}
   </div>
 }
 
@@ -112,13 +113,58 @@ function Field({ label, value, onChange, type = 'text', required = false }: { la
   return <label className="field"><span>{label}{required && ' *'}</span><input type={type} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>
 }
 
-function DocumentManager() {
+function DocumentManager({ items }: { items: MaterialItem[] }) {
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState(documents[0])
+  const [selected, setSelected] = useState<MaterialItem | null>(items[0] ?? null)
+  const [assets, setAssets] = useState<ActiveDocumentAsset[]>([])
   const [notice, setNotice] = useState('')
-  const matches = documents.filter((doc) => [doc.itemFg, doc.partName, doc.drawingNo].some((value) => value.toLowerCase().includes(query.toLowerCase())))
+  const [loadingAssets, setLoadingAssets] = useState(false)
+  const [previewAsset, setPreviewAsset] = useState<ActiveDocumentAsset | null>(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const matches = items.filter((item) => [item.itemFg, item.partName, item.drawingNo].some((value) => value.toLowerCase().includes(query.toLowerCase())))
+
+  useEffect(() => {
+    if (!selected && items.length) setSelected(items[0])
+  }, [items, selected])
+
+  async function refreshAssets(itemFg: string) {
+    setLoadingAssets(true)
+    try {
+      setAssets(await findActiveDocuments(itemFg))
+    } catch {
+      setAssets([])
+      setNotice('อ่านรายการเอกสารไม่สำเร็จ กรุณาตรวจการเชื่อมต่อ Supabase')
+    } finally {
+      setLoadingAssets(false)
+    }
+  }
+
+  useEffect(() => {
+    setPreviewAsset(null)
+    setPreviewUrl('')
+    if (selected) void refreshAssets(selected.itemFg)
+  }, [selected])
+
+  useEffect(() => {
+    if (!previewAsset) {
+      setPreviewUrl('')
+      return
+    }
+    setPreviewUrl('')
+    const controller = new AbortController()
+    let objectUrl = ''
+    void fetchPrivateDocument(previewAsset, { signal: controller.signal, useSettingsSession: true }).then((blob) => {
+      objectUrl = URL.createObjectURL(blob)
+      setPreviewUrl(objectUrl)
+    }).catch((error) => setNotice(`Preview ไม่สำเร็จ — ${error instanceof Error ? error.message : 'Unknown error'}`))
+    return () => {
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [previewAsset])
+
   async function upload(label: string, type: DocumentAssetType, file?: File) {
-    if (!file) return
+    if (!file || !selected) return
     if (!isSupabaseConfigured) {
       setNotice(`${label}: เลือกไฟล์ ${file.name} แล้ว (Prototype ยังไม่ได้อัปโหลดจริง)`)
       return
@@ -126,16 +172,22 @@ function DocumentManager() {
     setNotice(`${label}: กำลังอัปโหลด ${file.name}…`)
     try {
       await uploadDocumentAsset(selected.itemFg, type, file)
+      await refreshAssets(selected.itemFg)
       setNotice(`${label}: อัปโหลด ${file.name} และสร้าง Version ใหม่แล้ว`)
     } catch (error) {
       setNotice(`${label}: อัปโหลดไม่สำเร็จ — ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
+  const assetByType = new Map(assets.map((asset) => [asset.type, asset]))
   return <div className="document-settings-grid">
-    <section className="card document-master-list"><div className="card-header"><div><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div></div><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG หรือ DWG No.…" /></label><div className="result-list">{matches.map((doc) => <button className={`document-result ${selected.id === doc.id ? 'selected' : ''}`} onClick={() => setSelected(doc)} key={doc.id}><span className="availability found"><FileImage /></span><span><strong>{doc.itemFg}</strong><small>{doc.partName} • {doc.drawingNo}</small></span></button>)}</div></section>
-    <section className="card file-manager"><div className="card-header"><div><p className="eyebrow">DOCUMENT FILES</p><h2>{selected.itemFg} — {selected.partName}</h2></div></div>{notice && <div className="inline-notice"><FileUp size={17} />{notice}</div>}
-      {([['Drawing', selected.drawing, 'drawing'], ['Inprocess Check Sheet', selected.inprocess, 'inprocess'], ['QC Check Sheet', selected.qc, 'qc']] as const).map(([label, exists, type]) => <article className="upload-row" key={label}><span className={`availability ${exists ? 'found' : 'missing'}`}>{exists ? <FileCheck2 /> : <FileImage />}</span><div><strong>{label}</strong><small>{exists ? 'มีไฟล์ในระบบ' : 'ยังไม่มีไฟล์'}</small></div>{exists && <button className="button button-ghost">Preview</button>}<label className="button button-secondary upload-button"><FileUp size={16} />{exists ? 'Replace' : 'Add file'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => void upload(label, type, event.target.files?.[0])} /></label></article>)}
-      <p className="helper-text">ไฟล์จริงจะถูกเก็บใน Private Supabase Storage และเก็บประวัติ Version เมื่อเชื่อม Backend แล้ว</p>
+    <section className="card document-master-list"><div className="card-header"><div><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div></div><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG หรือ DWG No.…" /></label><div className="result-list">{matches.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}</div></section>
+    <section className="card file-manager"><div className="card-header"><div><p className="eyebrow">PRIVATE R2 DOCUMENTS</p><h2>{selected ? `${selected.itemFg} — ${selected.partName}` : 'ไม่พบ Item FG'}</h2></div></div>{notice && <div className="inline-notice"><FileUp size={17} />{notice}</div>}
+      {selected && ([['Drawing', 'drawing'], ['Inprocess Check Sheet', 'inprocess'], ['QC Check Sheet', 'qc']] as const).map(([label, type]) => {
+        const asset = assetByType.get(type)
+        return <article className="upload-row" key={label}><span className={`availability ${asset ? 'found' : 'missing'}`}>{asset ? <FileCheck2 /> : <FileImage />}</span><div><strong>{label}</strong><small>{loadingAssets ? 'กำลังตรวจสอบ…' : asset ? `${asset.filename} • Version ${asset.version}` : 'ยังไม่มีไฟล์ที่ Active'}</small></div>{asset && <button className="button button-ghost" onClick={() => setPreviewAsset(asset)}>Preview</button>}<label className="button button-secondary upload-button"><FileUp size={16} />{asset ? 'Add revision' : 'Add file'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => void upload(label, type, event.target.files?.[0])} /></label></article>
+      })}
+      {previewAsset && <div className="settings-document-preview"><div className="card-header"><div><p className="eyebrow">PREVIEW</p><h2>{previewAsset.itemFg} • {previewAsset.filename}</h2></div><button className="icon-button" onClick={() => setPreviewAsset(null)} aria-label="ปิด Preview"><X size={18} /></button></div>{previewUrl ? (previewAsset.mimeType === 'application/pdf' ? <iframe src={previewUrl} title={previewAsset.filename} /> : <img src={previewUrl} alt={previewAsset.filename} />) : <p>กำลังโหลดเอกสาร…</p>}</div>}
+      <p className="helper-text">ต้นฉบับเก็บใน Cloudflare R2 แบบ Private และ Supabase เก็บ Metadata/Version เท่านั้น</p>
     </section>
   </div>
 }

@@ -8,11 +8,16 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:worker": "node --test cloudflare-worker/src/index.test.mjs",
     "test:watch": "vitest",
     "check:migrations": "node scripts/check-supabase-migrations.mjs",
     "generate:master-import": "python scripts/generate-import-sql.py",
+    "generate:document-import": "python scripts/generate-document-import-sql.py",
+    "upload:r2-documents": "node scripts/upload-r2-documents.mjs",
+    "verify:r2-samples": "node scripts/verify-r2-samples.mjs",
+    "verify:live-documents": "node scripts/verify-live-document-flow.mjs",
     "verify:legacy": "node scripts/verify-legacy-export.mjs",
-    "check": "npm test && npm run build && npm run check:migrations"
+    "check": "npm test && npm run test:worker && npm run build && npm run check:migrations"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -30,6 +35,7 @@
     "jsdom": "^26.1.0",
     "typescript": "~5.8.3",
     "vite": "^7.1.5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.126.0"
   }
 }

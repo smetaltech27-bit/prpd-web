@@ -1,8 +1,8 @@
-# PRPD: Supabase data migration and security runbook
+# PRPD: Supabase + Cloudflare R2 migration and security runbook
 
-This runbook prepares the existing Google Sheets/XLSX and JPG data for Supabase. The
-repository contains migrations and local export tooling only. Nothing in this folder
-automatically links, migrates, uploads, or deploys data to a remote Supabase project.
+This runbook prepares the existing Google Sheets/XLSX data for Supabase and production
+documents for one private Cloudflare R2 bucket. Remote writes and deployments are always
+separate, explicit operational steps.
 
 ## Target model
 
@@ -34,6 +34,9 @@ Apply in filename order after the target project and backup are confirmed:
    three private Storage buckets and policies.
 4. `202608250004_harden_function_grants.sql` explicitly removes unauthenticated
    function execution and keeps the two browser RPCs available only after Supabase Auth.
+5. `202608260001_cloudflare_r2_documents.sql` adds the storage-provider field, accepts
+   the private `prpd-documents` R2 bucket, and creates authenticated document search that
+   returns only documents whose Item FG exists in the active Raw Material master.
 
 Do not apply these migrations to production first. Use a fresh staging project, inspect
 the SQL diff, import a sample, exercise RLS as both roles, and take a production backup
@@ -78,10 +81,10 @@ Baseline export observed on 2026-08-25:
 | Inprocess files | 476 |
 | QC files | 610 |
 
-The baseline has **154 document Item FG values not present in the Raw Material master**.
-This is not automatically treated as corruption: some may be legacy/inactive items, or
-filename/master inconsistencies. Review `orphan_asset_item_fg` in `summary.json` before
-upload. Do not silently discard those assets.
+The baseline has **154 document Item FG values not present in the Raw Material master**
+(247 physical files). Import all of them into R2 and keep all matching metadata. The
+document-search RPC deliberately hides an orphan until its Item FG is corrected or added
+as an active Raw Material; no source asset is silently discarded.
 
 ## Legacy column mapping
 
@@ -135,26 +138,45 @@ period to at least the largest imported suffix so the first live PR cannot colli
 update and all production data imports are external database writes and require explicit
 approval immediately before execution.
 
-## Document storage mapping
+## Private R2 document storage mapping
 
 Legacy filenames are Item FG values. The exporter uppercases the database key and creates
-lowercase, URL-safe immutable paths:
+lowercase, URL-safe immutable paths in one private bucket named `prpd-documents`:
 
 ```text
-drawing bucket:               tm4207a/v001/tm4207a.jpg
-inprocess-check-sheet bucket: tm4207a/v001/tm4207a.jpg
-qc-check-sheet bucket:        tm4207a/v001/tm4207a.jpg
+drawing/tm4207a/v001/tm4207a.jpg
+inprocess/tm4207a/v001/tm4207a.jpg
+qc/tm4207a/v001/tm4207a.jpg
 ```
 
 If duplicate source filenames normalize to the same Item FG/type, the exporter assigns
-increasing versions and marks only the newest active. Upload the object to its new path
-first, verify size/checksum/preview, then insert the matching `document_assets` row. The
-database trigger deactivates the former active revision. Browser roles cannot overwrite
-or delete Storage objects, so replacing a document always creates a new immutable path.
+increasing versions and marks only the newest active. The application creates new paths
+under `<type>/<item-fg>/revisions/<uuid>.<ext>` for later Settings uploads, so a browser
+never overwrites an existing object.
 
-Buckets remain private. A normal authenticated app session may read only an object that
-has matching active metadata. `settings_admin` may read every revision and upload new
-objects. Signed URLs should be short-lived and generated after the search succeeds.
+Keep R2 Public Access disabled. The browser never receives an R2 API credential. It calls
+the `prpd-document-gateway` Worker with its Supabase access token; the Worker validates the
+JWT before GET/HEAD and additionally calls `is_settings_admin()` before PUT. Supabase
+stores only metadata/version pointers. Legacy Supabase Storage remains readable only for
+backward compatibility and is not used by the new importer.
+
+Use this order for the initial migration:
+
+1. Export with checksums and verify all generated manifests.
+2. Upload every manifest object to private R2 and verify key, byte size, and checksum.
+3. Apply migration 5 to Supabase.
+4. Generate the ignored metadata import:
+
+   ```powershell
+   python scripts/generate-document-import-sql.py
+   ```
+
+5. Apply `supabase/seed/generated/import-documents.sql` in one controlled transaction.
+6. Compare R2 object count/bytes with the manifest, then test search, preview, and print.
+
+Never insert metadata before its R2 object is verified. If an upload succeeds but the
+metadata transaction fails, keep an operations log and reconcile that orphan in a later
+approved maintenance pass; do not delete automatically.
 
 ## Authentication and Settings password
 
@@ -197,11 +219,11 @@ Run these checks in staging before any production import:
 
 | Actor | Expected behavior |
 | --- | --- |
-| Unauthenticated `anon` database role | No master, PR, audit, or Storage access |
+| Unauthenticated `anon` database role | No master, PR, audit, metadata, or R2 gateway access |
 | Anonymous Supabase Auth user (`authenticated`) | Read active masters/doc metadata, read PR history, call atomic create-PR RPC |
-| Anonymous Auth user | Cannot insert/update/deactivate masters or upload objects |
-| `settings_admin` | Read inactive/versioned records, insert/update/deactivate masters, upload new immutable document versions |
-| `settings_admin` | Cannot hard-delete master rows or overwrite/delete Storage objects through the browser API |
+| Anonymous Auth user | Read private active documents through the Worker; cannot upload objects |
+| `settings_admin` | Read inactive/versioned records, insert/update/deactivate masters, upload new immutable R2 versions |
+| `settings_admin` | Cannot hard-delete master rows or overwrite/delete R2 objects through the browser API |
 | Any non-admin | Cannot read audit logs or another profile |
 
 Also test concurrent calls with the same month. Numbers must be unique and consecutive
@@ -219,8 +241,11 @@ A failed multi-vendor call must roll back all headers, lines, and allocated coun
   possibly an Edge Function rate-limit layer are recommended before public launch.
 - The RPC accepts a request date and uses it for the monthly sequence. Validate the chosen
   product rule for backdated/future PRs before production; imports bypass the live RPC.
-- Storage upload and metadata insert are two operations, not one transaction. Upload to a
+- R2 upload and Supabase metadata insert are two operations, not one transaction. Upload to a
   new path first; if metadata insertion fails, record and clean up the orphan only through
   an approved maintenance process.
 - RLS does not constrain the Supabase `service_role`. Keep that key only in trusted server
   environments and never in GitHub Pages, React variables, logs, or migration CSVs.
+- Cloudflare R2 has usage-based billing beyond its included monthly allowance. Keep the
+  bucket on Standard storage, monitor stored bytes and Class A/B operations, and configure
+  a billing budget alert. A budget alert warns about usage; it is not a hard spending cap.

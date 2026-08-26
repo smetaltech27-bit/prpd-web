@@ -16,6 +16,7 @@ const expectedOrder = [
   '202608250002_functions_and_audit.sql',
   '202608250003_rls_and_storage.sql',
   '202608250004_harden_function_grants.sql',
+  '202608260001_cloudflare_r2_documents.sql',
 ];
 const errors = [];
 
@@ -61,6 +62,8 @@ for (const required of [
   'public.create_purchase_requests(',
   'private.next_pr_number(',
   'PR-',
+  "'prpd-documents'",
+  'public.search_document_assets(',
 ]) {
   if (!allSql.includes(required)) errors.push(`Missing required migration token: ${required}`);
 }

@@ -1,5 +1,10 @@
 import type { MaterialItem } from '../types/domain'
 import { settingsSupabase, supabase } from '../lib/supabase'
+import {
+  createImmutableDocumentPath,
+  uploadPrivateDocument,
+  type PrivateDocumentLocation,
+} from './documentStorage'
 
 type MasterTable = 'raw_materials' | 'factory_supplies'
 
@@ -42,17 +47,54 @@ export interface CreatedPr {
   line_count: number
 }
 
-export interface ActiveDocumentAsset {
+export interface ActiveDocumentAsset extends PrivateDocumentLocation {
   id: string
   itemFg: string
   type: 'drawing' | 'inprocess' | 'qc'
-  bucket: string
-  path: string
   filename: string
-  signedUrl: string
+  mimeType: string
+  sizeBytes: number
+  version: number
+  updatedAt: string
+  partName: string
+  drawingNo: string
 }
 
 export type DocumentAssetType = 'drawing' | 'inprocess' | 'qc'
+
+interface DocumentAssetRow {
+  id: string
+  item_fg: string
+  document_type: DocumentAssetType
+  version: number
+  storage_provider?: 'supabase' | 'r2' | null
+  storage_bucket: string
+  storage_path: string
+  original_filename: string
+  mime_type?: string | null
+  size_bytes?: number | null
+  updated_at?: string | null
+  part_name?: string | null
+  drawing_no?: string | null
+}
+
+function mapDocumentAsset(row: DocumentAssetRow): ActiveDocumentAsset {
+  return {
+    id: row.id,
+    itemFg: row.item_fg,
+    type: row.document_type,
+    version: Number(row.version),
+    storageProvider: row.storage_provider === 'r2' ? 'r2' : 'supabase',
+    bucket: row.storage_bucket,
+    path: row.storage_path,
+    filename: row.original_filename,
+    mimeType: row.mime_type ?? 'application/octet-stream',
+    sizeBytes: Number(row.size_bytes ?? 0),
+    updatedAt: row.updated_at ?? '',
+    partName: row.part_name ?? '',
+    drawingNo: row.drawing_no ?? '',
+  }
+}
 
 function getVendorName(value: MasterRow['vendors']): string {
   if (Array.isArray(value)) return value[0]?.name ?? ''
@@ -121,31 +163,30 @@ export async function createPurchaseRequests(input: CreatePrInput): Promise<Crea
 
 export async function findActiveDocuments(itemFg: string): Promise<ActiveDocumentAsset[]> {
   if (!supabase) return []
-  const client = supabase
   const normalizedItemFg = itemFg.trim()
   if (!normalizedItemFg) return []
   const { data, error } = await supabase
     .from('document_assets')
-    .select('id,item_fg,document_type,storage_bucket,storage_path,original_filename')
+    .select('id,item_fg,document_type,version,storage_provider,storage_bucket,storage_path,original_filename,mime_type,size_bytes,updated_at')
     .ilike('item_fg', normalizedItemFg)
     .eq('is_active', true)
   if (error) throw error
+  return ((data ?? []) as DocumentAssetRow[]).map(mapDocumentAsset)
+}
 
-  return Promise.all((data ?? []).map(async (row) => {
-    const { data: signed, error: signedError } = await client.storage
-      .from(row.storage_bucket)
-      .createSignedUrl(row.storage_path, 5 * 60)
-    if (signedError) throw signedError
-    return {
-      id: row.id,
-      itemFg: row.item_fg,
-      type: row.document_type,
-      bucket: row.storage_bucket,
-      path: row.storage_path,
-      filename: row.original_filename,
-      signedUrl: signed.signedUrl,
-    } as ActiveDocumentAsset
-  }))
+export async function searchActiveDocuments(
+  query: string,
+  documentType: DocumentAssetType,
+  limit = 30,
+): Promise<ActiveDocumentAsset[]> {
+  if (!supabase || !query.trim()) return []
+  const { data, error } = await supabase.rpc('search_document_assets', {
+    p_query: query.trim(),
+    p_document_type: documentType,
+    p_limit: limit,
+  })
+  if (error) throw error
+  return ((data ?? []) as DocumentAssetRow[]).map(mapDocumentAsset)
 }
 
 function normalizeVendorName(name: string): string {
@@ -223,26 +264,15 @@ export async function uploadDocumentAsset(
   const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
   if (!allowedTypes.has(file.type)) throw new Error('Unsupported document file type')
 
-  const bucketByType: Record<DocumentAssetType, string> = {
-    drawing: 'drawing',
-    inprocess: 'inprocess-check-sheet',
-    qc: 'qc-check-sheet',
-  }
-  const extension = file.name.split('.').pop()?.toLocaleLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
-  const safeItemFg = normalizedItemFg.toLocaleLowerCase().replace(/[^a-z0-9_-]+/g, '-')
-  const uniquePart = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const storagePath = `${safeItemFg}/revisions/${uniquePart}.${extension}`
-  const bucket = bucketByType[documentType]
-
-  const { error: uploadError } = await settingsSupabase.storage
-    .from(bucket)
-    .upload(storagePath, file, { upsert: false, contentType: file.type })
-  if (uploadError) throw uploadError
+  const storagePath = createImmutableDocumentPath(normalizedItemFg, documentType, file.name)
+  const bucket = 'prpd-documents'
+  await uploadPrivateDocument(storagePath, file)
 
   const metadata = {
     item_fg: normalizedItemFg,
     document_type: documentType,
     version: null,
+    storage_provider: 'r2',
     storage_bucket: bucket,
     storage_path: storagePath,
     original_filename: file.name,

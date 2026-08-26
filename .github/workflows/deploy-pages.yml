@@ -24,12 +24,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - run: npm run check
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SETTINGS_ADMIN_EMAIL: ${{ vars.VITE_SETTINGS_ADMIN_EMAIL }}
+          VITE_DOCUMENT_WORKER_URL: ${{ vars.VITE_DOCUMENT_WORKER_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

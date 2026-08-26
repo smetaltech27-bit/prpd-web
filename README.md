@@ -1,6 +1,6 @@
 # PRPD — Purchase Request & Production Document
 
-ระบบ Purchase Request และเอกสารการผลิตของ S Metal Tech รุ่นใหม่ สร้างด้วย React + Vite + TypeScript และออกแบบสำหรับ Supabase Database/Auth/Storage โดยรักษา Flow หลักจาก Google Apps Script เดิม
+ระบบ Purchase Request และเอกสารการผลิตของ S Metal Tech รุ่นใหม่ สร้างด้วย React + Vite + TypeScript ใช้ Supabase สำหรับ Database/Auth และใช้ Cloudflare R2 Private สำหรับไฟล์เอกสาร โดยรักษา Flow หลักจาก Google Apps Script เดิม
 
 ## ฟังก์ชันหลัก
 
@@ -28,6 +28,7 @@ npm run dev
 VITE_SUPABASE_URL=https://gqculqpufpjvwofzzwks.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=...
 VITE_SETTINGS_ADMIN_EMAIL=...
+VITE_DOCUMENT_WORKER_URL=https://prpd-document-gateway.<workers-subdomain>.workers.dev
 ```
 
 Publishable key สามารถใช้ใน Browser ได้เมื่อเปิด RLS ครบ แต่ห้ามใส่ Secret/Service Role key ในตัวแปร `VITE_*` หรือ GitHub Pages
@@ -41,9 +42,11 @@ npm run verify:legacy
 
 ชุดทดสอบครอบคลุมขอบเขต 0/1/11/12/13/23/24/25 รายการ การแยก Vendor การจัดเลข Preview และการค้นเอกสาร
 
-## Supabase
+## Supabase และ Cloudflare R2
 
-SQL อยู่ใน `supabase/migrations/` และต้องรันตามลำดับไฟล์ ห้าม Apply Production ก่อนตรวจบน Staging และ Backup ข้อมูลเดิม
+SQL อยู่ใน `supabase/migrations/` และต้องรันตามลำดับไฟล์ เอกสาร Drawing, Inprocess และ QC อยู่ใน R2 bucket `prpd-documents` ที่ปิด Public Access ส่วน Supabase เก็บ Metadata, Version และสิทธิ์การเข้าถึง
+
+Frontend ไม่ถือ R2 credential และไม่อ่าน Bucket โดยตรง ทุกคำขอผ่าน Cloudflare Worker ใน `cloudflare-worker/` ซึ่งตรวจ Supabase session ก่อนอ่าน และตรวจสิทธิ์ `settings_admin` ก่อนอัปโหลด Revision ใหม่
 
 รายละเอียด Mapping, Auth/RLS, Storage และการนำเข้าข้อมูลอยู่ที่ [`docs/data-migration.md`](docs/data-migration.md)
 
@@ -53,4 +56,4 @@ SQL อยู่ใน `supabase/migrations/` และต้องรันต�
 
 Workflow อยู่ที่ `.github/workflows/deploy-pages.yml` และอ่านค่าการเชื่อมต่อผ่าน GitHub Actions Variables เท่านั้น Frontend ใช้ Hash Router เพื่อรองรับการ Refresh บน GitHub Pages
 
-ก่อนเปิด Production ต้องเปิด Anonymous Sign-in หรือกำหนด Employee Login ตามนโยบายองค์กร, Apply RLS, สร้าง Settings Admin และตรวจเอกสาร 154 Item FG ที่ไม่พบใน Raw Material master
+ก่อนเปิด Production ต้องเปิด Anonymous Sign-in หรือกำหนด Employee Login ตามนโยบายองค์กร, Apply RLS, Deploy Private Document Worker, สร้าง Settings Admin และตรวจเอกสาร 154 Item FG ที่ไม่พบใน Raw Material master เอกสารกลุ่มนี้เก็บใน R2 ได้ครบ แต่จะไม่แสดงในหน้าค้นหาจนกว่า Item FG จะมีอยู่และ Active ใน Raw Material master

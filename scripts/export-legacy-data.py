@@ -43,9 +43,9 @@ MASTER_COLUMNS = (
 )
 
 ASSET_SOURCES = (
-    ("drawing", "drawing", "DRAWING"),
-    ("inprocess", "inprocess-check-sheet", "INPROCESS CHECK SHEET"),
-    ("qc", "qc-check-sheet", "QC CHECK SHEET"),
+    ("drawing", "prpd-documents", "DRAWING"),
+    ("inprocess", "prpd-documents", "INPROCESS CHECK SHEET"),
+    ("qc", "prpd-documents", "QC CHECK SHEET"),
 )
 
 
@@ -288,7 +288,7 @@ def asset_records(source_root: Path, with_checksums: bool) -> tuple[list[dict[st
             extension = path.suffix.lower() or ".bin"
             mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
             slug = storage_slug(item_fg)
-            storage_path = f"{slug}/v{version:03d}/{slug}{extension}"
+            storage_path = f"{document_type}/{slug}/v{version:03d}/{slug}{extension}"
             checksum = ""
             if with_checksums:
                 digest = hashlib.sha256()
@@ -302,6 +302,7 @@ def asset_records(source_root: Path, with_checksums: bool) -> tuple[list[dict[st
                     "item_fg": item_fg,
                     "document_type": document_type,
                     "version": version,
+                    "storage_provider": "r2",
                     "storage_bucket": bucket_by_type[document_type],
                     "storage_path": storage_path,
                     "original_filename": path.name,
@@ -416,14 +417,14 @@ def export(args: argparse.Namespace) -> dict[str, Any]:
         output / "document_assets.csv",
         assets,
         (
-            "id", "item_fg", "document_type", "version", "storage_bucket", "storage_path",
+            "id", "item_fg", "document_type", "version", "storage_provider", "storage_bucket", "storage_path",
             "original_filename", "mime_type", "size_bytes", "checksum_sha256", "is_active",
         ),
     )
     write_csv(
         output / "storage-upload-manifest.csv",
         assets,
-        ("source_path", "storage_bucket", "storage_path", "item_fg", "document_type", "version", "is_active"),
+        ("source_path", "storage_provider", "storage_bucket", "storage_path", "item_fg", "document_type", "version", "is_active"),
     )
 
     payload = {
