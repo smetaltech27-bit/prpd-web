@@ -2,7 +2,7 @@ import { formatPrNumber } from './prNumber'
 import type { PrNumberOptions } from './prNumber'
 import type { PrLineItem, PrPage, PrVendorGroup, PrVendorPlan } from './types'
 
-export const PR_ITEMS_PER_PAGE = 12
+export const PR_ITEMS_PER_PAGE = 16
 
 function normalizedVendor(vendor: string): string {
   const value = vendor.trim()
@@ -27,7 +27,7 @@ export function groupItemsByVendor(items: readonly PrLineItem[]): PrVendorGroup[
 }
 
 /**
- * Creates fixed 12-row A4 pages. Empty input intentionally yields no page, so
+ * Creates fixed 16-row A4 pages. Empty input intentionally yields no page, so
  * callers cannot print an empty PR by accident.
  */
 export function paginateVendorItems<T>(

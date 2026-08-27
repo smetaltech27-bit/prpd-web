@@ -19,6 +19,7 @@ const expectedOrder = [
   '202608260001_cloudflare_r2_documents.sql',
   '202608260002_restore_legacy_pr_flows.sql',
   '202608270001_print_confirmation_workflow.sql',
+  '202608270002_reuse_reserved_pr_numbers.sql',
 ];
 const errors = [];
 

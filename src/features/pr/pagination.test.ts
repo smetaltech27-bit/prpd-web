@@ -16,8 +16,8 @@ function items(count: number, vendor = 'Vendor A'): PrLineItem[] {
 
 describe('paginateVendorItems', () => {
   it.each([
-    [0, 0, []], [1, 1, [1]], [11, 1, [11]], [12, 1, [12]],
-    [13, 2, [12, 1]], [23, 2, [12, 11]], [24, 2, [12, 12]], [25, 3, [12, 12, 1]],
+    [0, 0, []], [1, 1, [1]], [15, 1, [15]], [16, 1, [16]],
+    [17, 2, [16, 1]], [31, 2, [16, 15]], [32, 2, [16, 16]], [33, 3, [16, 16, 1]],
   ] as const)('paginates %i rows into %i page(s)', (count, expectedPages, counts) => {
     const pages = paginateVendorItems('Vendor A', items(count))
     expect(pages).toHaveLength(expectedPages)
@@ -26,7 +26,7 @@ describe('paginateVendorItems', () => {
   })
 
   it('shows continuation before the last page and signatures only on the last page', () => {
-    const pages = paginateVendorItems('Vendor A', items(25))
+    const pages = paginateVendorItems('Vendor A', items(33))
     expect(pages.map((page) => page.continuation)).toEqual([true, true, false])
     expect(pages.map((page) => page.showSignatures)).toEqual([false, false, true])
     expect(pages.map((page) => `${page.pageNumber}/${page.totalPages}`)).toEqual(['1/3', '2/3', '3/3'])
@@ -35,14 +35,14 @@ describe('paginateVendorItems', () => {
 
 describe('vendor grouping', () => {
   it('keeps one PR page set per vendor in insertion order', () => {
-    const mixed = [...items(2, 'Vendor B'), ...items(13, 'Vendor A'), ...items(1, 'Vendor B')]
+    const mixed = [...items(2, 'Vendor B'), ...items(17, 'Vendor A'), ...items(1, 'Vendor B')]
     const groups = groupItemsByVendor(mixed)
-    expect(groups.map((group) => [group.vendor, group.items.length])).toEqual([['Vendor B', 3], ['Vendor A', 13]])
+    expect(groups.map((group) => [group.vendor, group.items.length])).toEqual([['Vendor B', 3], ['Vendor A', 17]])
     expect(buildPrPages(mixed).map((page) => page.vendor)).toEqual(['Vendor B', 'Vendor A', 'Vendor A'])
   })
 
   it('plans one sequential PR number per unique vendor', () => {
-    const plans = planVendorPrs([...items(13, 'Vendor A'), ...items(1, 'Vendor B')], 8, { date: new Date(2026, 7, 1) })
+    const plans = planVendorPrs([...items(17, 'Vendor A'), ...items(1, 'Vendor B')], 8, { date: new Date(2026, 7, 1) })
     expect(plans.map((plan) => [plan.vendor, plan.prNumber, plan.pages.length])).toEqual([
       ['Vendor A', 'PR-2608-0008', 2],
       ['Vendor B', 'PR-2608-0009', 1],

@@ -51,6 +51,15 @@ export interface CreatedPr {
   line_count: number
 }
 
+export interface UpdatePrDraftsInput {
+  kind: CreatePrInput['kind']
+  dueDate?: string
+  drafts: Array<{
+    id: string
+    items: CreatePrInput['items']
+  }>
+}
+
 export interface PrHistoryLine {
   lineId: string
   prId: string
@@ -191,20 +200,24 @@ export function listFactorySupplies(): Promise<MaterialItem[]> {
   return listMaster('factory_supplies')
 }
 
+function mapPrItem(item: CreatePrInput['items'][number]) {
+  return {
+    source_id: item.sourceId,
+    quantity: item.quantity,
+    fg_qty: item.fgQty ?? null,
+    unit_price: item.unitPrice ?? null,
+    due_date: item.dueDate ?? null,
+    comment: item.comment ?? null,
+    vendor_name: item.vendorName ?? null,
+    name_part: item.namePart ?? null,
+    spec: item.spec ?? null,
+  }
+}
+
 function createPrRpcArgs(input: CreatePrInput) {
   return {
     p_request_kind: input.kind,
-    p_items: input.items.map((item) => ({
-      source_id: item.sourceId,
-      quantity: item.quantity,
-      fg_qty: item.fgQty ?? null,
-      unit_price: item.unitPrice ?? null,
-      due_date: item.dueDate ?? null,
-      comment: item.comment ?? null,
-      vendor_name: item.vendorName ?? null,
-      name_part: item.namePart ?? null,
-      spec: item.spec ?? null,
-    })),
+    p_items: input.items.map(mapPrItem),
     p_request_date: input.requestDate,
     p_due_date: input.dueDate ?? null,
     p_requester_name: input.requesterName ?? null,
@@ -222,6 +235,17 @@ export async function createPurchaseRequests(input: CreatePrInput): Promise<Crea
 export async function reservePurchaseRequestsForPrint(input: CreatePrInput): Promise<CreatedPr[]> {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('reserve_purchase_requests_for_print', createPrRpcArgs(input))
+  if (error) throw error
+  return (data ?? []) as CreatedPr[]
+}
+
+export async function updatePurchaseRequestDraftsForPrint(input: UpdatePrDraftsInput): Promise<CreatedPr[]> {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('update_purchase_request_drafts_for_print', {
+    p_request_kind: input.kind,
+    p_drafts: input.drafts.map((draft) => ({ id: draft.id, items: draft.items.map(mapPrItem) })),
+    p_due_date: input.dueDate ?? null,
+  })
   if (error) throw error
   return (data ?? []) as CreatedPr[]
 }

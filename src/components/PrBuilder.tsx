@@ -14,6 +14,8 @@ import {
   confirmPurchaseRequestsPrinted,
   discardPurchaseRequestDrafts,
   reservePurchaseRequestsForPrint,
+  updatePurchaseRequestDraftsForPrint,
+  type CreatedPr,
 } from '../services/prpdRepository'
 import { EmptyState, PageHeader } from './AppShell'
 
@@ -31,6 +33,24 @@ function numberValue(event: ChangeEvent<HTMLInputElement>, minimum = 0): number 
   return Number.isFinite(value) ? Math.max(minimum, value) : minimum
 }
 
+function vendorKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+}
+
+function toPrInputItem(line: PrLineItem) {
+  return {
+    sourceId: line.id,
+    quantity: line.quantity,
+    fgQty: line.fgQuantity,
+    unitPrice: line.unitPrice,
+    dueDate: line.dueDate,
+    comment: line.comment,
+    vendorName: line.vendor,
+    namePart: line.namePart,
+    spec: line.spec,
+  }
+}
+
 export function PrBuilder({ category, items }: PrBuilderProps) {
   const isRaw = category === 'Raw Material'
   const sequence = useRef(0)
@@ -46,8 +66,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [finalizingPrint, setFinalizingPrint] = useState(false)
-  const [createdNumbers, setCreatedNumbers] = useState<Record<string, string>>({})
-  const [createdIds, setCreatedIds] = useState<string[]>([])
+  const [reservedPrs, setReservedPrs] = useState<CreatedPr[]>([])
   const [printConfirmationOpen, setPrintConfirmationOpen] = useState(false)
 
   const lines = useMemo(
@@ -55,6 +74,11 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     [equipmentLines, isRaw, rawLines],
   )
   const groups = useMemo(() => groupItemsByVendor(lines), [lines])
+  const createdNumbers = useMemo(
+    () => Object.fromEntries(reservedPrs.map((record) => [record.vendor_name, record.pr_number])),
+    [reservedPrs],
+  )
+  const createdIds = useMemo(() => reservedPrs.map((record) => record.id), [reservedPrs])
   const total = lines.reduce((sum, item) => sum + (item.unitPrice ?? 0) * item.quantity, 0)
   const vendors = useMemo(() => [...new Set(items.map((item) => item.vendor).filter(Boolean))].sort(), [items])
   const filteredEquipment = useMemo(() => {
@@ -89,12 +113,10 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   }
 
   function updateRawLine(lineId: string, patch: Partial<PrLineItem>) {
-    if (Object.keys(createdNumbers).length) return
     setRawLines((current) => current.map((line) => line.lineId === lineId ? { ...line, ...patch } : line))
   }
 
   function toggleEquipment(item: MaterialItem) {
-    if (Object.keys(createdNumbers).length) return
     if (!dueDate) {
       setError('กรุณาระบุ Due Date ก่อนเลือกรายการ')
       return
@@ -168,10 +190,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   }
 
   async function saveAndPrint() {
-    if (Object.keys(createdNumbers).length) {
-      printCurrentPreview()
-      return
-    }
     if (!validateDraft()) return
     if (!isSupabaseConfigured) {
       setError('ยังไม่ได้เชื่อม Supabase จึงไม่สามารถจองเลข PR จริงได้')
@@ -180,26 +198,48 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     setCreating(true)
     setError('')
     try {
-      const created = await reservePurchaseRequestsForPrint({
-        kind: isRaw ? 'raw_material' : 'factory_supply',
-        requestDate: today(),
-        dueDate: dueDate || undefined,
-        items: lines.map((line) => ({
-          sourceId: line.id,
-          quantity: line.quantity,
-          fgQty: line.fgQuantity,
-          unitPrice: line.unitPrice,
-          dueDate: line.dueDate,
-          comment: line.comment,
-          vendorName: line.vendor,
-          namePart: line.namePart,
-          spec: line.spec,
-        })),
-      })
-      const numbers = Object.fromEntries(created.map((record) => [record.vendor_name, record.pr_number]))
-      setCreatedIds(created.map((record) => record.id))
-      setCreatedNumbers(numbers)
-      setNotice(`จองเลข ${created.map((record) => record.pr_number).join(', ')} ชั่วคราวแล้ว กรุณายืนยันผลหลังปิดหน้าพิมพ์`)
+      const kind = isRaw ? 'raw_material' : 'factory_supply'
+      let nextReserved: CreatedPr[]
+
+      if (!reservedPrs.length) {
+        nextReserved = await reservePurchaseRequestsForPrint({
+          kind,
+          requestDate: today(),
+          dueDate: dueDate || undefined,
+          items: lines.map(toPrInputItem),
+        })
+      } else {
+        const groupByVendor = new Map(groups.map((group) => [vendorKey(group.vendor), group]))
+        const reservedByVendor = new Map(reservedPrs.map((record) => [vendorKey(record.vendor_name), record]))
+        const existingDrafts = reservedPrs.flatMap((record) => {
+          const group = groupByVendor.get(vendorKey(record.vendor_name))
+          return group ? [{ id: record.id, items: group.items.map(toPrInputItem) }] : []
+        })
+        const staleDrafts = reservedPrs.filter((record) => !groupByVendor.has(vendorKey(record.vendor_name)))
+        const newGroups = groups.filter((group) => !reservedByVendor.has(vendorKey(group.vendor)))
+
+        nextReserved = existingDrafts.length
+          ? await updatePurchaseRequestDraftsForPrint({ kind, dueDate: dueDate || undefined, drafts: existingDrafts })
+          : []
+
+        if (newGroups.length) {
+          const created = await reservePurchaseRequestsForPrint({
+            kind,
+            requestDate: today(),
+            dueDate: dueDate || undefined,
+            items: newGroups.flatMap((group) => group.items.map(toPrInputItem)),
+          })
+          nextReserved = [...nextReserved, ...created]
+          setReservedPrs([...nextReserved, ...staleDrafts])
+        }
+
+        if (staleDrafts.length) {
+          await discardPurchaseRequestDrafts(staleDrafts.map((record) => record.id))
+        }
+      }
+
+      setReservedPrs(nextReserved)
+      setNotice(`ใช้เลข ${nextReserved.map((record) => record.pr_number).join(', ')} สำหรับการพิมพ์ครั้งนี้ กรุณายืนยันหลังปิดหน้าพิมพ์`)
       printCurrentPreview()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'จองเลข PR ไม่สำเร็จ ระบบไม่ได้บันทึกรายการบางส่วน')
@@ -209,10 +249,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   }
 
   function closePreview() {
-    if (createdIds.length) {
-      setPrintConfirmationOpen(true)
-      return
-    }
     setPreviewOpen(false)
   }
 
@@ -227,8 +263,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
       setPreviewOpen(false)
       setRawLines([])
       setEquipmentLines({})
-      setCreatedIds([])
-      setCreatedNumbers({})
+      setReservedPrs([])
       setNotice(`ยืนยันการพิมพ์และบันทึก ${numberList} ใน PR History แล้ว`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'ยืนยันผลการพิมพ์ไม่สำเร็จ กรุณาลองอีกครั้ง')
@@ -237,22 +272,11 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     }
   }
 
-  async function cancelPrintAndEdit() {
-    if (!createdIds.length) return
-    setFinalizingPrint(true)
+  function cancelPrintAndEdit() {
     setError('')
-    try {
-      await discardPurchaseRequestDrafts(createdIds)
-      setPrintConfirmationOpen(false)
-      setPreviewOpen(false)
-      setCreatedIds([])
-      setCreatedNumbers({})
-      setNotice('ยกเลิกการพิมพ์แล้ว รายการเดิมยังอยู่และแก้ไขต่อได้')
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'ยกเลิกร่าง PR ไม่สำเร็จ กรุณาลองอีกครั้ง')
-    } finally {
-      setFinalizingPrint(false)
-    }
+    setPrintConfirmationOpen(false)
+    setPreviewOpen(false)
+    setNotice(`กลับไปแก้ไขได้ โดยยังคงจองเลข ${Object.values(createdNumbers).join(', ')} ไว้ให้ใช้พิมพ์รอบถัดไป`)
   }
 
   return (
@@ -336,17 +360,16 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
               <section className="modal-panel print-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="print-confirm-title">
                 <header className="modal-header">
                   <span className="modal-icon"><Printer size={22} /></span>
-                  <div><span className="eyebrow">PRINT CONFIRMATION</span><h2 id="print-confirm-title">พิมพ์เอกสารสำเร็จแล้วหรือไม่?</h2></div>
+                  <div><span className="eyebrow">PRINT CONFIRMATION</span><h2 id="print-confirm-title">ยืนยันพิมพ์เอกสาร</h2></div>
                   <span />
                 </header>
                 <div className="modal-body">
-                  <p className="print-confirm-copy">เบราว์เซอร์ไม่สามารถตรวจได้ว่ากด “พิมพ์” หรือ “ยกเลิก” ในหน้าต่างพิมพ์ กรุณายืนยันผลเพื่อให้ระบบจัดการ PR อย่างถูกต้องค่ะ</p>
                   <div className="print-confirm-numbers"><span>เลข PR ที่จองชั่วคราว</span><strong>{Object.values(createdNumbers).join(', ')}</strong></div>
                   {error && <div className="flow-notice error">{error}</div>}
                 </div>
                 <footer className="modal-footer">
-                  <button className="button button-secondary" disabled={finalizingPrint} onClick={() => void cancelPrintAndEdit()}>ยังไม่ได้พิมพ์ / กลับไปแก้ไข</button>
-                  <button className="button button-primary" disabled={finalizingPrint} onClick={() => void confirmPrinted()}>{finalizingPrint ? <LoaderCircle className="spin" /> : <CheckCircle2 size={17} />}{finalizingPrint ? 'กำลังบันทึก…' : 'พิมพ์สำเร็จ'}</button>
+                  <button className="button button-secondary" disabled={finalizingPrint} onClick={cancelPrintAndEdit}>ยังไม่ได้พิมพ์ / กลับไปแก้ไข</button>
+                  <button className="button button-primary" disabled={finalizingPrint} onClick={() => void confirmPrinted()}>{finalizingPrint ? <LoaderCircle className="spin" /> : <CheckCircle2 size={17} />}{finalizingPrint ? 'กำลังบันทึก…' : 'ยืนยันพิมพ์'}</button>
                 </footer>
               </section>
             </div>

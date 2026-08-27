@@ -269,8 +269,7 @@ h1, h2, h3, p { margin-top: 0; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid #e4edf6; }
 .print-confirm-overlay { z-index: 140; }
 .print-confirm-panel { width: min(540px, 100%); }
-.print-confirm-copy { margin: 0; color: #4c6178; font-size: 13px; line-height: 1.75; }
-.print-confirm-numbers { margin-top: 16px; padding: 14px 16px; border: 1px solid #d8e8f7; border-radius: 11px; background: #f3f9ff; }
+.print-confirm-numbers { margin-top: 0; padding: 14px 16px; border: 1px solid #d8e8f7; border-radius: 11px; background: #f3f9ff; }
 .print-confirm-numbers span, .print-confirm-numbers strong { display: block; }
 .print-confirm-numbers span { color: var(--muted); font-size: 10px; }
 .print-confirm-numbers strong { margin-top: 4px; color: var(--navy); font-size: 15px; }
