@@ -286,6 +286,15 @@ h1, h2, h3, p { margin-top: 0; }
 
 .sidebar-backdrop { display: none; }
 
+@media (min-width: 781px) {
+  .nav-heading { margin: 11px 12px 5px; }
+  .nav-heading span { font-size: 12px; }
+  .nav-heading small { font-size: 9px; }
+  .nav-item { padding-block: 6px; }
+  .nav-label > span { font-size: 15px; }
+  .nav-label > small { font-size: 11px; line-height: 1.3; }
+}
+
 @media (max-width: 1120px) {
   .sidebar { width: 238px; }
   .main-area { margin-left: 238px; }
