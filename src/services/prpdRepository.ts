@@ -200,6 +200,19 @@ export function listFactorySupplies(): Promise<MaterialItem[]> {
   return listMaster('factory_supplies')
 }
 
+export async function listVendorNames(): Promise<string[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('name')
+    .eq('is_active', true)
+    .order('name')
+  if (error) throw error
+  return (data ?? [])
+    .map((vendor) => vendor.name?.trim() ?? '')
+    .filter(Boolean)
+}
+
 function mapPrItem(item: CreatePrInput['items'][number]) {
   return {
     source_id: item.sourceId,
