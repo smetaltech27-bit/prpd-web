@@ -291,11 +291,11 @@ function RawMaterialTable({ lines, updateLine, removeLine }: {
     {!lines.length && <tr><td colSpan={13}><EmptyState title="ยังไม่มีรายการ" description="กรอก Item FG แล้วกดดึงข้อมูล ระบบจะแสดง Raw Material ทุก Vendor" /></td></tr>}
     {lines.map((line, index) => <tr key={line.lineId}>
       <td>{index + 1}</td>
-      <td><input className="locked-input" value={line.vendor} readOnly aria-label={`Vendor ${index + 1} (ล็อก)`} title="ข้อมูลจาก Master Data ไม่สามารถแก้ไขได้" /></td>
+      <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.vendor || '-'}</span></td>
       <td><strong>{line.itemFg}</strong></td><td>{line.codeOrder || '-'}</td>
-      <td><input className="locked-input" value={line.namePart} readOnly aria-label={`Name Part ${index + 1} (ล็อก)`} title="ข้อมูลจาก Master Data ไม่สามารถแก้ไขได้" /></td>
+      <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.namePart || '-'}</span></td>
       <td>{line.materialType || '-'}</td>
-      <td><input className="locked-input" value={line.spec ?? ''} readOnly aria-label={`Spec ${index + 1} (ล็อก)`} title="ข้อมูลจาก Master Data ไม่สามารถแก้ไขได้" /></td>
+      <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.spec || '-'}</span></td>
       <td>{line.fgQuantity}</td>
       <td><input className="number-input" type="number" min="0.0001" step="any" value={line.quantity} onChange={(event) => updateLine(line.lineId, { quantity: numberValue(event) })} /></td>
       <td><input className="number-input" type="number" min="0" step="0.01" value={line.unitPrice ?? 0} onChange={(event) => updateLine(line.lineId, { unitPrice: numberValue(event) })} /></td>

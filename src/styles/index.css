@@ -158,7 +158,7 @@ h1, h2, h3, p { margin-top: 0; }
 .editable-table { min-width: 1260px; }
 .editable-table td { padding: 8px; white-space: nowrap; }
 .editable-table input { min-width: 105px; height: 34px; padding-inline: 7px; }
-.editable-table input.locked-input, .editable-table input.locked-input:focus { color: #526980; border-color: #d9e4ee; background: #f2f6fa; box-shadow: none; cursor: not-allowed; }
+.editable-table .master-value { margin-top: 0; color: #1c3857; font-size: 11px; }
 .editable-table .number-input { width: 76px; min-width: 76px; }
 .editable-table .row-checkbox { width: 17px; min-width: 17px; height: 17px; accent-color: var(--blue); }
 .icon-button.danger { color: var(--danger); }
