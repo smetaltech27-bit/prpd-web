@@ -6,23 +6,12 @@ import { lockSettings } from '../services/settingsAccess'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { deactivateMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType } from '../services/prpdRepository'
 import { fetchPrivateDocument } from '../services/documentStorage'
+import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
 import type { MaterialItem } from '../types/domain'
 
 type SettingsTab = 'raw' | 'equipment' | 'documents'
 
 const emptyItem: MaterialItem = { id: '', itemFg: '', partName: '', spec: '', drawingNo: '', orderCode: '', vendor: '', materialType: '', dimension: '', unitPrice: 0, usage: 1, comment: '' }
-
-export function matchesMasterSearch(item: MaterialItem, query: string, vendor = '') {
-  const keyword = query.trim().toLocaleLowerCase()
-  const matchesKeyword = !keyword || [item.itemFg, item.partName, item.spec, item.drawingNo, item.vendor, item.materialType, item.dimension]
-    .some((value) => value.toLocaleLowerCase().includes(keyword))
-  return matchesKeyword && (!vendor || item.vendor === vendor)
-}
-
-export function sortVendorNames(names: string[]) {
-  return [...new Set(names.map((name) => name.trim()).filter(Boolean))]
-    .sort((left, right) => left.localeCompare(right, ['th', 'en'], { sensitivity: 'base', numeric: true }))
-}
 
 export function SettingsPage() {
   const [tab, setTab] = useState<SettingsTab>('raw')

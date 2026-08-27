@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MaterialItem } from '../types/domain'
-import { matchesMasterSearch, sortVendorNames } from './SettingsPage'
+import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
 
 const item: MaterialItem = {
   id: '1',
