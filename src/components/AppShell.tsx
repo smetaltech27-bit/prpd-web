@@ -12,15 +12,15 @@ import { PasswordModal } from './PasswordModal'
 interface AppShellProps { children: ReactNode }
 
 const mainMenu = [
-  { path: '/raw-material-pr', label: 'Raw Material PR', icon: PackageSearch },
-  { path: '/equipment-pr', label: 'Equipment PR', icon: Boxes },
-  { path: '/work-order', label: 'Work Order', icon: Wrench },
+  { path: '/raw-material-pr', label: 'ออก PR วัตถุดิบ (Raw Material PR)', icon: PackageSearch },
+  { path: '/equipment-pr', label: 'ออก PR วัสดุอุปกรณ์ (Equipment PR)', icon: Boxes },
+  { path: '/work-order', label: 'ใบสั่งงาน (Work Order)', icon: Wrench },
 ]
 
 const documentMenu = [
-  { path: '/print/drawing', label: 'Print Drawing', icon: FileImage },
-  { path: '/print/inprocess', label: 'Print Inprocess Check Sheet', icon: FileClock },
-  { path: '/print/qc', label: 'Print QC Check Sheet', icon: FileCheck2 },
+  { path: '/print/drawing', label: 'พิมพ์แบบงาน (Print Drawing)', icon: FileImage },
+  { path: '/print/inprocess', label: 'พิมพ์ใบตรวจระหว่างผลิต (Print Inprocess Check Sheet)', icon: FileClock },
+  { path: '/print/qc', label: 'พิมพ์ใบตรวจคุณภาพ (Print QC Check Sheet)', icon: FileCheck2 },
 ]
 
 export function AppShell({ children }: AppShellProps) {
@@ -86,24 +86,24 @@ export function AppShell({ children }: AppShellProps) {
       <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
         <div className="brand">
           <div className="brand-logo"><img src={`${import.meta.env.BASE_URL}logo-smt.jpg`} alt="S Metal Tech" /></div>
-          <div><strong>PRPD</strong><span>Purchase Request</span></div>
+          <div><strong>PRPD</strong><span>คำขอซื้อ (Purchase Request)</span></div>
           <button className="sidebar-close" onClick={closeMobile} aria-label="ปิดเมนู"><X size={20} /></button>
         </div>
         <nav className="sidebar-nav" aria-label="เมนูหลัก">
-          <p className="nav-heading">PURCHASE REQUEST</p>
+          <p className="nav-heading">คำขอซื้อ (PURCHASE REQUEST)</p>
           {mainMenu.map(navItem)}
-          <p className="nav-heading">PRODUCTION DOCUMENTS</p>
+          <p className="nav-heading">เอกสารการผลิต (PRODUCTION DOCUMENTS)</p>
           {documentMenu.map(navItem)}
-          <p className="nav-heading">MANAGEMENT</p>
+          <p className="nav-heading">การจัดการ (MANAGEMENT)</p>
           <NavLink to="/pr-history" onClick={closeMobile} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <History size={19} /><span>PR History</span>
+            <History size={19} /><span>ประวัติ PR (PR History)</span>
           </NavLink>
         </nav>
         <div className="sidebar-footer">
           <button className={`nav-item settings-link ${location.pathname === '/settings' ? 'active' : ''}`} onClick={handleSettingsClick}>
-            <Settings size={19} /><span>Settings</span><ShieldCheck size={15} className="nav-trailing" />
+            <Settings size={19} /><span>การตั้งค่า (Settings)</span><ShieldCheck size={15} className="nav-trailing" />
           </button>
-          <div className={`system-status ${appSession === 'ready' ? '' : 'setup-required'}`}><span /><div><strong>{appSession === 'ready' ? 'System online' : appSession === 'demo' ? 'Demo data' : 'Connection issue'}</strong><small>{appSession === 'ready' ? 'Supabase ready' : appSession === 'demo' ? 'Setup required' : 'Check Supabase Auth'}</small></div></div>
+          <div className={`system-status ${appSession === 'ready' ? '' : 'setup-required'}`}><span /><div><strong>{appSession === 'ready' ? 'ระบบออนไลน์ (System online)' : appSession === 'demo' ? 'ข้อมูลตัวอย่าง (Demo data)' : 'การเชื่อมต่อมีปัญหา (Connection issue)'}</strong><small>{appSession === 'ready' ? 'Supabase พร้อมใช้งาน (Supabase ready)' : appSession === 'demo' ? 'ต้องตั้งค่าระบบ (Setup required)' : 'ตรวจสอบ Supabase Auth (Check Supabase Auth)'}</small></div></div>
         </div>
       </aside>
       <main className="main-area">

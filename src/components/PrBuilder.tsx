@@ -1,4 +1,4 @@
-import { CheckCircle2, FileText, LoaderCircle, Printer, Search, Trash2, X } from 'lucide-react'
+import { CheckCircle2, LoaderCircle, Printer, Search, Trash2, X } from 'lucide-react'
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { MaterialItem } from '../types/domain'
@@ -33,7 +33,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   const [itemFg, setItemFg] = useState('')
   const [productionQuantity, setProductionQuantity] = useState(1)
   const [dueDate, setDueDate] = useState('')
-  const [requester, setRequester] = useState('')
   const [query, setQuery] = useState('')
   const [vendorFilter, setVendorFilter] = useState('')
   const [rawLines, setRawLines] = useState<PrLineItem[]>([])
@@ -167,7 +166,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
         kind: isRaw ? 'raw_material' : 'factory_supply',
         requestDate: today(),
         dueDate: dueDate || undefined,
-        requesterName: requester || undefined,
         items: lines.map((line) => ({
           sourceId: line.id,
           quantity: line.quantity,
@@ -213,8 +211,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
       />
 
       <section className="metrics-grid">
-        <article className="metric-card"><span className="metric-icon blue"><FileText /></span><div><small>Selected rows</small><strong>{lines.length}</strong><em>รายการ</em></div></article>
-        <article className="metric-card"><span className="metric-icon cyan"><FileText /></span><div><small>PR documents</small><strong>{groups.length}</strong><em>แยกตาม Vendor</em></div></article>
         <article className="metric-card"><span className="metric-icon green"><CheckCircle2 /></span><div><small>Estimated total</small><strong>฿{total.toLocaleString()}</strong><em>ราคา × Q’ty</em></div></article>
       </section>
 
@@ -246,7 +242,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
         )}
 
         <div className="legacy-pr-actions">
-          <label className="field requester-field"><span>Requester (ถ้ามี)</span><input value={requester} onChange={(event) => setRequester(event.target.value)} placeholder="ชื่อผู้ขอซื้อ" /></label>
           {isRaw && <button className="button button-secondary" disabled={!rawLines.length} onClick={() => setRawLines([])}>ล้างข้อมูล</button>}
           <button className="button button-primary" disabled={!lines.length} onClick={preview}><Printer size={17} /> สรุปและเตรียมพิมพ์</button>
         </div>
@@ -270,7 +265,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
                       kind: isRaw ? 'raw-material' : 'equipment',
                       prNumber: createdNumbers[group.vendor] ?? 'รอกดพิมพ์',
                       requestDate: today(),
-                      requestedBy: requester,
+                      requestedBy: '',
                       items: group.items,
                     }}
                     pages={paginateVendorItems(group.vendor, group.items)}
