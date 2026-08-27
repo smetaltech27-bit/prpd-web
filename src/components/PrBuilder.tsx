@@ -3,8 +3,11 @@ import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { MaterialItem } from '../types/domain'
 import {
+  bangkokToday,
   createRawMaterialLines,
+  formatIsoDate,
   groupItemsByVendor,
+  isPastDueDate,
   paginateVendorItems,
   PrPrintDocument,
   type PrLineItem,
@@ -22,10 +25,6 @@ import { EmptyState, PageHeader } from './AppShell'
 interface PrBuilderProps {
   category: 'Raw Material' | 'Equipment'
   items: MaterialItem[]
-}
-
-function today(): string {
-  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
 
 function numberValue(event: ChangeEvent<HTMLInputElement>, minimum = 0): number {
@@ -53,6 +52,7 @@ function toPrInputItem(line: PrLineItem) {
 
 export function PrBuilder({ category, items }: PrBuilderProps) {
   const isRaw = category === 'Raw Material'
+  const minimumDueDate = bangkokToday()
   const sequence = useRef(0)
   const [itemFg, setItemFg] = useState('')
   const [productionQuantity, setProductionQuantity] = useState(1)
@@ -97,6 +97,10 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
       setError('กรุณากรอก Item FG, จำนวนที่ต้องการผลิต และ Due Date ให้ครบ')
       return
     }
+    if (isPastDueDate(dueDate, minimumDueDate)) {
+      showPastDueDateError()
+      return
+    }
     const normalized = itemFg.trim().toLocaleUpperCase()
     const matches = items.filter((item) => item.itemFg.trim().toLocaleUpperCase() === normalized)
     if (!matches.length) {
@@ -113,6 +117,11 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   }
 
   function updateRawLine(lineId: string, patch: Partial<PrLineItem>) {
+    if (patch.dueDate && isPastDueDate(patch.dueDate, minimumDueDate)) {
+      showPastDueDateError()
+      return
+    }
+    if (patch.dueDate) setError('')
     setRawLines((current) => current.map((line) => line.lineId === lineId ? { ...line, ...patch } : line))
   }
 
@@ -152,7 +161,29 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   }
 
   function updateEquipment(id: string, patch: Partial<PrLineItem>) {
+    if (patch.dueDate && isPastDueDate(patch.dueDate, minimumDueDate)) {
+      showPastDueDateError()
+      return
+    }
+    if (patch.dueDate) setError('')
     setEquipmentLines((current) => current[id] ? { ...current, [id]: { ...current[id], ...patch } } : current)
+  }
+
+  function showPastDueDateError() {
+    setNotice('')
+    setError(`Due Date ต้องไม่ย้อนหลังวันปัจจุบัน กรุณาเลือกตั้งแต่ ${formatIsoDate(minimumDueDate)} เป็นต้นไป`)
+  }
+
+  function updateHeaderDueDate(value: string) {
+    if (isPastDueDate(value, minimumDueDate)) {
+      showPastDueDateError()
+      return
+    }
+    setError('')
+    setDueDate(value)
+    if (!isRaw) {
+      setEquipmentLines((current) => Object.fromEntries(Object.entries(current).map(([id, line]) => [id, { ...line, dueDate: value }])))
+    }
   }
 
   function validateDraft(): boolean {
@@ -163,6 +194,10 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     const invalid = lines.find((line) => !line.vendor.trim() || !line.namePart.trim() || line.quantity <= 0 || !line.dueDate)
     if (invalid) {
       setError('กรุณาตรวจ Vendor, Name Part, Q’ty และ Due Date ของทุกรายการ')
+      return false
+    }
+    if (lines.some((line) => isPastDueDate(line.dueDate ?? '', minimumDueDate))) {
+      showPastDueDateError()
       return false
     }
     setError('')
@@ -204,7 +239,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
       if (!reservedPrs.length) {
         nextReserved = await reservePurchaseRequestsForPrint({
           kind,
-          requestDate: today(),
+          requestDate: minimumDueDate,
           dueDate: dueDate || undefined,
           items: lines.map(toPrInputItem),
         })
@@ -225,7 +260,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
         if (newGroups.length) {
           const created = await reservePurchaseRequestsForPrint({
             kind,
-            requestDate: today(),
+            requestDate: minimumDueDate,
             dueDate: dueDate || undefined,
             items: newGroups.flatMap((group) => group.items.map(toPrInputItem)),
           })
@@ -299,16 +334,12 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
           <div className="legacy-pr-inputs">
             <label><span>Item FG *</span><input value={itemFg} onChange={(event) => setItemFg(event.target.value)} placeholder="เช่น TM4207A" onKeyDown={(event) => { if (event.key === 'Enter') addRawMaterial() }} /></label>
             <label><span>จำนวนที่ต้องการผลิต (ชิ้น) *</span><input type="number" min="1" value={productionQuantity} onChange={(event) => setProductionQuantity(numberValue(event, 1))} /></label>
-            <label><span>Due Date *</span><input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
+            <label><span>Due Date *</span><input type="date" min={minimumDueDate} value={dueDate} onChange={(event) => updateHeaderDueDate(event.target.value)} /></label>
             <button className="button button-primary" onClick={addRawMaterial}><Search size={17} /> ดึงข้อมูล</button>
           </div>
         ) : (
           <div className="legacy-pr-inputs equipment-filters">
-            <label><span>Due Date *</span><input type="date" value={dueDate} onChange={(event) => {
-              const value = event.target.value
-              setDueDate(value)
-              setEquipmentLines((current) => Object.fromEntries(Object.entries(current).map(([id, line]) => [id, { ...line, dueDate: value }])))
-            }} /></label>
+            <label><span>Due Date *</span><input type="date" min={minimumDueDate} value={dueDate} onChange={(event) => updateHeaderDueDate(event.target.value)} /></label>
             <label><span>ค้นหารายการ</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, Name, Spec…" /></label>
             <label><span>Vendor</span><select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)}><option value="">ทั้งหมด</option>{vendors.map((vendor) => <option key={vendor}>{vendor}</option>)}</select></label>
           </div>
@@ -316,7 +347,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
         {(notice || error) && <div className={`flow-notice ${error ? 'error' : ''}`}>{error || notice}</div>}
 
         {isRaw ? (
-          <RawMaterialTable lines={rawLines} updateLine={updateRawLine} removeLine={(lineId) => setRawLines((current) => current.filter((line) => line.lineId !== lineId))} />
+          <RawMaterialTable lines={rawLines} minimumDueDate={minimumDueDate} updateLine={updateRawLine} removeLine={(lineId) => setRawLines((current) => current.filter((line) => line.lineId !== lineId))} />
         ) : (
           <EquipmentTable items={filteredEquipment} selected={equipmentLines} toggle={toggleEquipment} update={updateEquipment} />
         )}
@@ -344,7 +375,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
                     draft={{
                       kind: isRaw ? 'raw-material' : 'equipment',
                       prNumber: createdNumbers[group.vendor] ?? 'รอกดพิมพ์',
-                      requestDate: today(),
+                      requestDate: minimumDueDate,
                       requestedBy: '',
                       items: group.items,
                     }}
@@ -381,8 +412,9 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   )
 }
 
-function RawMaterialTable({ lines, updateLine, removeLine }: {
+function RawMaterialTable({ lines, minimumDueDate, updateLine, removeLine }: {
   lines: PrLineItem[]
+  minimumDueDate: string
   updateLine: (lineId: string, patch: Partial<PrLineItem>) => void
   removeLine: (lineId: string) => void
 }) {
@@ -398,7 +430,7 @@ function RawMaterialTable({ lines, updateLine, removeLine }: {
       <td>{line.fgQuantity}</td>
       <td><input className="number-input" type="number" min="0.0001" step="any" value={line.quantity} onChange={(event) => updateLine(line.lineId, { quantity: numberValue(event) })} /></td>
       <td><input className="number-input" type="number" min="0" step="0.01" value={line.unitPrice ?? 0} onChange={(event) => updateLine(line.lineId, { unitPrice: numberValue(event) })} /></td>
-      <td><input type="date" value={line.dueDate ?? ''} onChange={(event) => updateLine(line.lineId, { dueDate: event.target.value })} /></td>
+      <td><input type="date" min={minimumDueDate} value={line.dueDate ?? ''} onChange={(event) => updateLine(line.lineId, { dueDate: event.target.value })} /></td>
       <td><input value={line.comment ?? ''} onChange={(event) => updateLine(line.lineId, { comment: event.target.value })} /></td>
       <td><button className="icon-button danger" onClick={() => removeLine(line.lineId)} aria-label="ลบรายการ"><Trash2 size={16} /></button></td>
     </tr>)}
