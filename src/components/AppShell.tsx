@@ -96,7 +96,7 @@ export function AppShell({ children }: AppShellProps) {
       <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
         <div className="brand">
           <div className="brand-logo"><img src={`${import.meta.env.BASE_URL}logo-smt.jpg`} alt="S Metal Tech" /></div>
-          <div className="brand-copy"><strong>PRPD</strong><span>คำขอซื้อ</span><small>(Purchase Request)</small></div>
+          <div className="brand-copy"><strong>เอกสารขอซื้อและเอกสารการผลิต</strong><span>(Purchase Request And Production Document)</span><small>PRPD</small></div>
           <button className="sidebar-close" onClick={closeMobile} aria-label="ปิดเมนู"><X size={20} /></button>
         </div>
         <nav className="sidebar-nav" aria-label="เมนูหลัก">

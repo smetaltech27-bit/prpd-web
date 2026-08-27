@@ -100,18 +100,77 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
     marginMm = 0,
     fit = 'contain',
   } = options
-  const printWindow = openPrintWindow(title)
-  const style = printWindow.document.createElement('style')
-  style.textContent = `${PRINT_BASE_CSS}
+  const previousTitle = document.title
+  const host = document.createElement('div')
+  const style = document.createElement('style')
+  const image = document.createElement('img')
+  host.className = 'direct-print-image-host'
+  style.dataset.directPrintImage = 'true'
+  style.textContent = `
+    .direct-print-image-host {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      visibility: hidden;
+      pointer-events: none;
+    }
     @page { size: A4 ${orientation}; margin: ${marginMm}mm; }
-    html, body { width: 100%; height: 100%; }
-    body { display: grid; place-items: center; font-family: Arial, sans-serif; }
-    img { width: 100%; height: 100%; object-fit: ${fit}; }
+    @media print {
+      html, body {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      body > *:not(.direct-print-image-host) { display: none !important; }
+      body > .direct-print-image-host {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: auto !important;
+        display: grid !important;
+        place-items: center !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        visibility: visible !important;
+      }
+      .direct-print-image-host > img {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        object-fit: ${fit} !important;
+      }
+    }
   `
-  const image = printWindow.document.createElement('img')
   image.alt = title
   image.src = imageUrl
-  image.addEventListener('load', () => printWindow.print(), { once: true })
-  printWindow.document.head.append(style)
-  printWindow.document.body.append(image)
+  host.append(image)
+  document.head.append(style)
+  document.body.append(host)
+  document.title = title
+
+  let printed = false
+  const cleanup = () => {
+    window.removeEventListener('afterprint', cleanup)
+    host.remove()
+    style.remove()
+    document.title = previousTitle
+  }
+  const printOnce = () => {
+    if (printed) return
+    printed = true
+    window.addEventListener('afterprint', cleanup, { once: true })
+    window.print()
+  }
+  if (image.complete) window.requestAnimationFrame(printOnce)
+  else {
+    image.addEventListener('load', () => window.requestAnimationFrame(printOnce), { once: true })
+    image.addEventListener('error', () => window.requestAnimationFrame(printOnce), { once: true })
+    window.setTimeout(printOnce, 1500)
+  }
 }
