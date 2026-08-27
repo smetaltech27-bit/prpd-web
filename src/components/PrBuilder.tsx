@@ -169,6 +169,12 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     setEquipmentLines((current) => current[id] ? { ...current, [id]: { ...current[id], ...patch } } : current)
   }
 
+  function clearEquipmentSelection() {
+    setEquipmentLines({})
+    setError('')
+    setNotice('ล้างรายการที่เลือกทั้งหมดแล้ว')
+  }
+
   function showPastDueDateError() {
     setNotice('')
     setError(`Due Date ต้องไม่ย้อนหลังวันปัจจุบัน กรุณาเลือกตั้งแต่ ${formatIsoDate(minimumDueDate)} เป็นต้นไป`)
@@ -354,6 +360,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
 
         <div className="legacy-pr-actions">
           {isRaw && <button className="button button-secondary" disabled={!rawLines.length} onClick={() => setRawLines([])}>ล้างข้อมูล</button>}
+          {!isRaw && <button className="button button-secondary" disabled={!lines.length} onClick={clearEquipmentSelection}>ล้างข้อมูล</button>}
           <button className="button button-primary" disabled={!lines.length} onClick={preview}><Printer size={17} /> สรุปและเตรียมพิมพ์</button>
         </div>
       </section>
