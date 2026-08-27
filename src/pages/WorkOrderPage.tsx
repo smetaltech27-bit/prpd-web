@@ -57,7 +57,7 @@ function WorkOrderFirstPage({ master, quantity, deliveryDate, drawingUrl }: {
           <div><span className="wo-label">DWG NO.</span><strong>{master.drawingNo || '-'}</strong></div>
         </div>
         <div className="wo-item-qr"><b>1</b><img src={qrUrl(master.itemFg, 150)} alt={`QR ${master.itemFg}`} /></div>
-        <div className="wo-receiving-qr"><div><span>รับ Material</span><small>Process Receiving =&gt;</small></div><img src={qrUrl('Process Receiving', 120)} alt="QR Process Receiving" /></div>
+        <div className="wo-receiving-qr"><span>Receiving</span><img src={qrUrl('Receiving', 120)} alt="QR Receiving" /></div>
       </div>
     </section>
 
@@ -108,6 +108,13 @@ export function WorkOrderPage() {
   useEffect(() => () => {
     Object.values(documents).forEach((document) => URL.revokeObjectURL(document.url))
   }, [documents])
+
+  useEffect(() => {
+    if (!previewOpen) return
+    const returnToWorkOrderForm = () => setPreviewOpen(false)
+    window.addEventListener('afterprint', returnToWorkOrderForm)
+    return () => window.removeEventListener('afterprint', returnToWorkOrderForm)
+  }, [previewOpen])
 
   async function load(event: FormEvent) {
     event.preventDefault()
