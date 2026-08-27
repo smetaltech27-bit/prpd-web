@@ -113,7 +113,7 @@
 
 .wo-process-table {
   flex: none;
-  width: 100%;
+  width: calc(100% - .55mm);
   height: 102mm;
   margin-top: 2.5mm;
   border: .55mm solid #000;
@@ -129,14 +129,14 @@
 .wo-process-table tbody th { padding-left: 2.5mm; text-align: left; font-size: 8pt; }
 .wo-process-table thead small { display: block; margin-top: 1mm; font-size: 5.5pt; font-weight: 400; }
 .wo-process-table td img { display: block; width: 13.5mm; height: 13.5mm; margin: auto; }
-.wo-process-detail { width: 25mm; }
+.wo-process-detail { width: 24mm; }
 .wo-process-qr { width: 30mm; }
 .wo-process-scan { width: 34mm; }
 .wo-process-material { width: 14mm; }
 .wo-process-result { width: 13mm; }
 .wo-process-balance { width: 17mm; }
 .wo-process-employee { width: 25mm; }
-.wo-process-note { width: 19mm; }
+.wo-process-note { width: 18mm; }
 
 .wo-embedded-drawing {
   flex: 1;
