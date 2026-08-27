@@ -356,6 +356,7 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 @media print {
+  .no-print { display: none !important; }
   .sidebar, .mobile-header, .page-header, .metrics-grid, .document-hero, .button, .search-box { display: none !important; }
   .main-area { margin: 0; }.page { width: 100%; padding: 0; }.card { border: 0; box-shadow: none; }
 }
