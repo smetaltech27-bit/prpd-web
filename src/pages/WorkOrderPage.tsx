@@ -1,4 +1,4 @@
-import { FileText, LoaderCircle, Printer, X } from 'lucide-react'
+import { CheckCircle2, FileText, LoaderCircle, Printer, X } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { PageHeader } from '../components/AppShell'
@@ -104,6 +104,7 @@ export function WorkOrderPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [printSuccess, setPrintSuccess] = useState(false)
 
   useEffect(() => () => {
     Object.values(documents).forEach((document) => URL.revokeObjectURL(document.url))
@@ -111,10 +112,26 @@ export function WorkOrderPage() {
 
   useEffect(() => {
     if (!previewOpen) return
-    const returnToWorkOrderForm = () => setPreviewOpen(false)
+    const returnToWorkOrderForm = () => {
+      setPreviewOpen(false)
+      setItemFg('')
+      setQuantity(1)
+      setDeliveryDate('')
+      setMaster(null)
+      setDocuments({})
+      setOrientation({})
+      setError('')
+      setPrintSuccess(true)
+    }
     window.addEventListener('afterprint', returnToWorkOrderForm)
     return () => window.removeEventListener('afterprint', returnToWorkOrderForm)
   }, [previewOpen])
+
+  useEffect(() => {
+    if (!printSuccess) return
+    const timer = window.setTimeout(() => setPrintSuccess(false), 3000)
+    return () => window.clearTimeout(timer)
+  }, [printSuccess])
 
   async function load(event: FormEvent) {
     event.preventDefault()
@@ -156,6 +173,7 @@ export function WorkOrderPage() {
   const drawingForFirstPage = documents.drawing?.asset.mimeType === 'application/pdf' ? undefined : documents.drawing?.url
 
   return <div className="page">
+    {printSuccess && <div className="wo-success-toast" role="status" aria-live="polite"><CheckCircle2 size={22} /><div><strong>พิมพ์สำเร็จ</strong><span>พร้อมสร้างใบ Work Order ใหม่</span></div></div>}
     <PageHeader eyebrow="PRODUCTION" title="Work Order" description="ค้นหา Item FG และสร้างชุดเอกสารสำหรับเริ่มงานผลิต" />
     <section className="card workorder-setup">
       <div className="card-header"><div><p className="eyebrow">JOB SETUP</p><h2>รายละเอียดใบสั่งงาน</h2></div><span className="status-pill blue">Work Order</span></div>
