@@ -267,6 +267,13 @@ h1, h2, h3, p { margin-top: 0; }
 .field-error { margin: 6px 0 0; color: #c34854; font-size: 10px; }
 .security-note { margin-top: 17px; padding: 11px; border-radius: 8px; color: #6a7e94; background: #f2f7fc; font-size: 9px; line-height: 1.55; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid #e4edf6; }
+.print-confirm-overlay { z-index: 140; }
+.print-confirm-panel { width: min(540px, 100%); }
+.print-confirm-copy { margin: 0; color: #4c6178; font-size: 13px; line-height: 1.75; }
+.print-confirm-numbers { margin-top: 16px; padding: 14px 16px; border: 1px solid #d8e8f7; border-radius: 11px; background: #f3f9ff; }
+.print-confirm-numbers span, .print-confirm-numbers strong { display: block; }
+.print-confirm-numbers span { color: var(--muted); font-size: 10px; }
+.print-confirm-numbers strong { margin-top: 4px; color: var(--navy); font-size: 15px; }
 
 .auth-setup-shell { min-height: 100svh; display: grid; place-items: center; padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 20% 10%, rgba(57, 176, 242, .24), transparent 34%), linear-gradient(145deg, #f7fbff, #eaf4ff); }
 .auth-setup-card { width: min(520px, 100%); padding: 28px; border: 1px solid rgba(183, 211, 239, .88); border-radius: 20px; background: rgba(255, 255, 255, .96); box-shadow: 0 24px 70px rgba(19, 71, 130, .16); }

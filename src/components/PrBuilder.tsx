@@ -10,7 +10,11 @@ import {
   type PrLineItem,
 } from '../features/pr'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { createPurchaseRequests } from '../services/prpdRepository'
+import {
+  confirmPurchaseRequestsPrinted,
+  discardPurchaseRequestDrafts,
+  reservePurchaseRequestsForPrint,
+} from '../services/prpdRepository'
 import { EmptyState, PageHeader } from './AppShell'
 
 interface PrBuilderProps {
@@ -41,7 +45,10 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   const [error, setError] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [finalizingPrint, setFinalizingPrint] = useState(false)
   const [createdNumbers, setCreatedNumbers] = useState<Record<string, string>>({})
+  const [createdIds, setCreatedIds] = useState<string[]>([])
+  const [printConfirmationOpen, setPrintConfirmationOpen] = useState(false)
 
   const lines = useMemo(
     () => isRaw ? rawLines : Object.values(equipmentLines),
@@ -146,7 +153,18 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
   }
 
   function printCurrentPreview() {
-    requestAnimationFrame(() => requestAnimationFrame(() => window.print()))
+    let handled = false
+    const showConfirmation = () => {
+      if (handled) return
+      handled = true
+      window.removeEventListener('afterprint', showConfirmation)
+      setPrintConfirmationOpen(true)
+    }
+    window.addEventListener('afterprint', showConfirmation, { once: true })
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.print()
+      window.setTimeout(showConfirmation, 0)
+    }))
   }
 
   async function saveAndPrint() {
@@ -162,7 +180,7 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     setCreating(true)
     setError('')
     try {
-      const created = await createPurchaseRequests({
+      const created = await reservePurchaseRequestsForPrint({
         kind: isRaw ? 'raw_material' : 'factory_supply',
         requestDate: today(),
         dueDate: dueDate || undefined,
@@ -179,23 +197,61 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
         })),
       })
       const numbers = Object.fromEntries(created.map((record) => [record.vendor_name, record.pr_number]))
+      setCreatedIds(created.map((record) => record.id))
       setCreatedNumbers(numbers)
-      setNotice(`บันทึกและจองเลข ${created.map((record) => record.pr_number).join(', ')} แล้ว`)
+      setNotice(`จองเลข ${created.map((record) => record.pr_number).join(', ')} ชั่วคราวแล้ว กรุณายืนยันผลหลังปิดหน้าพิมพ์`)
       printCurrentPreview()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'สร้าง PR ไม่สำเร็จ ระบบไม่ได้จองเลขบางส่วน')
+      setError(reason instanceof Error ? reason.message : 'จองเลข PR ไม่สำเร็จ ระบบไม่ได้บันทึกรายการบางส่วน')
     } finally {
       setCreating(false)
     }
   }
 
   function closePreview() {
+    if (createdIds.length) {
+      setPrintConfirmationOpen(true)
+      return
+    }
     setPreviewOpen(false)
-    if (Object.keys(createdNumbers).length) {
+  }
+
+  async function confirmPrinted() {
+    if (!createdIds.length) return
+    setFinalizingPrint(true)
+    setError('')
+    try {
+      await confirmPurchaseRequestsPrinted(createdIds)
+      const numberList = Object.values(createdNumbers).join(', ')
+      setPrintConfirmationOpen(false)
+      setPreviewOpen(false)
       setRawLines([])
       setEquipmentLines({})
+      setCreatedIds([])
       setCreatedNumbers({})
-      setNotice('พร้อมสร้าง PR ชุดถัดไป')
+      setNotice(`ยืนยันการพิมพ์และบันทึก ${numberList} ใน PR History แล้ว`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'ยืนยันผลการพิมพ์ไม่สำเร็จ กรุณาลองอีกครั้ง')
+    } finally {
+      setFinalizingPrint(false)
+    }
+  }
+
+  async function cancelPrintAndEdit() {
+    if (!createdIds.length) return
+    setFinalizingPrint(true)
+    setError('')
+    try {
+      await discardPurchaseRequestDrafts(createdIds)
+      setPrintConfirmationOpen(false)
+      setPreviewOpen(false)
+      setCreatedIds([])
+      setCreatedNumbers({})
+      setNotice('ยกเลิกการพิมพ์แล้ว รายการเดิมยังอยู่และแก้ไขต่อได้')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'ยกเลิกร่าง PR ไม่สำเร็จ กรุณาลองอีกครั้ง')
+    } finally {
+      setFinalizingPrint(false)
     }
   }
 
@@ -252,8 +308,8 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
           <div className="pr-preview-panel">
             <header className="pr-preview-toolbar no-print">
               <button className="button button-secondary" onClick={closePreview}><X size={17} /> กลับไปแก้ไข</button>
-              <div><strong>PR Preview</strong><span>{Object.keys(createdNumbers).length ? 'บันทึกเลขจริงแล้ว กดพิมพ์ซ้ำได้โดยไม่สร้างเลขใหม่' : 'ยังไม่จองเลข PR จนกดปุ่มพิมพ์'}</span></div>
-              <button className="button button-primary" disabled={creating} onClick={() => void saveAndPrint()}>{creating ? <LoaderCircle className="spin" /> : <Printer size={17} />}{creating ? 'กำลังจองเลข…' : Object.keys(createdNumbers).length ? 'พิมพ์ซ้ำ' : 'บันทึก PR และพิมพ์'}</button>
+              <div><strong>PR Preview</strong><span>{Object.keys(createdNumbers).length ? 'จองเลขชั่วคราวแล้ว รอยืนยันผลการพิมพ์' : 'ยังไม่จองเลข PR จนกดปุ่มพิมพ์'}</span></div>
+              <button className="button button-primary" disabled={creating} onClick={() => void saveAndPrint()}>{creating ? <LoaderCircle className="spin" /> : <Printer size={17} />}{creating ? 'กำลังจองเลข…' : Object.keys(createdNumbers).length ? 'พิมพ์อีกครั้ง' : 'จองเลข PR และพิมพ์'}</button>
             </header>
             {(error || notice) && <div className={`pr-preview-message no-print ${error ? 'error' : ''}`}>{error || notice}</div>}
             <div className="pr-preview-body">
@@ -275,6 +331,26 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
               </div>
             </div>
           </div>
+          {printConfirmationOpen && (
+            <div className="modal-overlay print-confirm-overlay no-print" role="presentation">
+              <section className="modal-panel print-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="print-confirm-title">
+                <header className="modal-header">
+                  <span className="modal-icon"><Printer size={22} /></span>
+                  <div><span className="eyebrow">PRINT CONFIRMATION</span><h2 id="print-confirm-title">พิมพ์เอกสารสำเร็จแล้วหรือไม่?</h2></div>
+                  <span />
+                </header>
+                <div className="modal-body">
+                  <p className="print-confirm-copy">เบราว์เซอร์ไม่สามารถตรวจได้ว่ากด “พิมพ์” หรือ “ยกเลิก” ในหน้าต่างพิมพ์ กรุณายืนยันผลเพื่อให้ระบบจัดการ PR อย่างถูกต้องค่ะ</p>
+                  <div className="print-confirm-numbers"><span>เลข PR ที่จองชั่วคราว</span><strong>{Object.values(createdNumbers).join(', ')}</strong></div>
+                  {error && <div className="flow-notice error">{error}</div>}
+                </div>
+                <footer className="modal-footer">
+                  <button className="button button-secondary" disabled={finalizingPrint} onClick={() => void cancelPrintAndEdit()}>ยังไม่ได้พิมพ์ / กลับไปแก้ไข</button>
+                  <button className="button button-primary" disabled={finalizingPrint} onClick={() => void confirmPrinted()}>{finalizingPrint ? <LoaderCircle className="spin" /> : <CheckCircle2 size={17} />}{finalizingPrint ? 'กำลังบันทึก…' : 'พิมพ์สำเร็จ'}</button>
+                </footer>
+              </section>
+            </div>
+          )}
         </div>,
         document.body,
       )}

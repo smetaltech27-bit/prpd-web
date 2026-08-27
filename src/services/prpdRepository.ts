@@ -191,9 +191,8 @@ export function listFactorySupplies(): Promise<MaterialItem[]> {
   return listMaster('factory_supplies')
 }
 
-export async function createPurchaseRequests(input: CreatePrInput): Promise<CreatedPr[]> {
-  if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('create_purchase_requests', {
+function createPrRpcArgs(input: CreatePrInput) {
+  return {
     p_request_kind: input.kind,
     p_items: input.items.map((item) => ({
       source_id: item.sourceId,
@@ -210,9 +209,35 @@ export async function createPurchaseRequests(input: CreatePrInput): Promise<Crea
     p_due_date: input.dueDate ?? null,
     p_requester_name: input.requesterName ?? null,
     p_header_comment: input.headerComment ?? null,
-  })
+  }
+}
+
+export async function createPurchaseRequests(input: CreatePrInput): Promise<CreatedPr[]> {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('create_purchase_requests', createPrRpcArgs(input))
   if (error) throw error
   return (data ?? []) as CreatedPr[]
+}
+
+export async function reservePurchaseRequestsForPrint(input: CreatePrInput): Promise<CreatedPr[]> {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('reserve_purchase_requests_for_print', createPrRpcArgs(input))
+  if (error) throw error
+  return (data ?? []) as CreatedPr[]
+}
+
+export async function confirmPurchaseRequestsPrinted(prIds: string[]): Promise<number> {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('confirm_purchase_requests_printed', { p_pr_ids: prIds })
+  if (error) throw error
+  return Number(data ?? 0)
+}
+
+export async function discardPurchaseRequestDrafts(prIds: string[]): Promise<number> {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('discard_purchase_request_drafts', { p_pr_ids: prIds })
+  if (error) throw error
+  return Number(data ?? 0)
 }
 
 export async function searchPrHistory(filters: PrHistoryFilters): Promise<PrHistoryLine[]> {
