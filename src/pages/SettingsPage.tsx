@@ -196,6 +196,17 @@ function DocumentManager() {
     }
   }
 
+  function clearDocumentSearch() {
+    setQuery('')
+    setItems([])
+    setSelected(null)
+    setSearched(false)
+    setAssets([])
+    setNotice('')
+    setPreviewAsset(null)
+    setPreviewUrl('')
+  }
+
   async function refreshAssets(itemFg: string) {
     setLoadingAssets(true)
     try {
@@ -249,7 +260,7 @@ function DocumentManager() {
   }
   const assetByType = new Map(assets.map((asset) => [asset.type, asset]))
   return <div className="document-settings-grid">
-    <section className="card document-master-list"><div className="card-header"><div><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div></div><form className="document-settings-search" onSubmit={searchItems}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Name Part หรือ DWG No.…" /></label><button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button></form><div className="result-list">{items.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}{!items.length && <p className="settings-result-message">{searched ? 'ไม่พบ Item FG ที่ตรงกับคำค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</p>}</div></section>
+    <section className="card document-master-list"><div className="card-header"><div><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div></div><form className="document-settings-search" onSubmit={searchItems}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Name Part หรือ DWG No.…" /></label><button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button><button className="button button-secondary" type="button" onClick={clearDocumentSearch} disabled={!query && !items.length && !selected && !notice}><X size={17} />ล้างข้อมูล</button></form><div className="result-list">{items.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}{!items.length && <p className="settings-result-message">{searched ? 'ไม่พบ Item FG ที่ตรงกับคำค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</p>}</div></section>
     <section className="card file-manager"><div className="card-header"><div><p className="eyebrow">PRIVATE R2 DOCUMENTS</p><h2>{selected ? `${selected.itemFg} — ${selected.partName}` : 'ไม่พบ Item FG'}</h2></div></div>{notice && <div className="inline-notice"><FileUp size={17} />{notice}</div>}
       {selected && ([['Drawing', 'drawing'], ['Inprocess Check Sheet', 'inprocess'], ['QC Check Sheet', 'qc']] as const).map(([label, type]) => {
         const asset = assetByType.get(type)

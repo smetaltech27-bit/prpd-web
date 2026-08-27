@@ -20,6 +20,7 @@ const expectedOrder = [
   '202608260002_restore_legacy_pr_flows.sql',
   '202608270001_print_confirmation_workflow.sql',
   '202608270002_reuse_reserved_pr_numbers.sql',
+  '202608270003_restore_raw_material_112200.sql',
 ];
 const errors = [];
 
