@@ -186,6 +186,7 @@ function DocumentManager() {
       const source = isSupabaseConfigured ? await listRawMaterials() : rawMaterials
       const matches = source.filter((item) => matchesMasterSearch(item, query))
       setItems(matches)
+      setSelected(matches[0] ?? null)
       setSearched(true)
     } catch {
       setItems([])

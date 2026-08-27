@@ -18,16 +18,18 @@ vi.mock('../services/prpdRepository', () => ({
 describe('Settings document search', () => {
   afterEach(() => vi.clearAllMocks())
 
-  it('clears the query, results, selection, documents, and preview state', async () => {
+  it('selects the first search result automatically and clears the complete state', async () => {
     render(<SettingsPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Document Files' }))
 
     const searchInput = screen.getByPlaceholderText('ค้นหา Item FG, Name Part หรือ DWG No.…')
     fireEvent.change(searchInput, { target: { value: 'TM4207A' } })
     fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
-    fireEvent.click(await screen.findByRole('button', { name: /TM4207A/ }))
 
-    expect(screen.getByText('TM4207A — ARM A')).toBeInTheDocument()
+    expect(await screen.findByText('TM4207A — ARM A')).toBeInTheDocument()
+    expect(screen.getByText('Drawing')).toBeInTheDocument()
+    expect(screen.getByText('Inprocess Check Sheet')).toBeInTheDocument()
+    expect(screen.getByText('QC Check Sheet')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'ล้างข้อมูล' }))
 
     expect(searchInput).toHaveValue('')
