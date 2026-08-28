@@ -329,6 +329,10 @@ h1, h2, h3, p { margin-top: 0; }
 .auth-setup-status p { max-width: 350px; margin: 10px auto 20px; color: var(--muted); font-size: 11px; line-height: 1.65; }
 .modal-icon.success { color: var(--success); background: #e8f8f2; }
 .modal-icon.danger { color: var(--danger); background: #fcedef; }
+.print-success-overlay { z-index: 160; }
+.print-success-panel { width: min(470px, 100%); }
+.print-success-message { margin: 0; color: #50657c; font-size: 13px; line-height: 1.75; }
+.print-success-panel .modal-footer .button { min-width: 110px; }
 
 .sidebar-backdrop { display: none; }
 

@@ -112,26 +112,24 @@ export function WorkOrderPage() {
 
   useEffect(() => {
     if (!previewOpen) return
-    const returnToWorkOrderForm = () => {
+    const showPrintSuccess = () => {
       setPreviewOpen(false)
-      setItemFg('')
-      setQuantity(1)
-      setDeliveryDate('')
-      setMaster(null)
-      setDocuments({})
-      setOrientation({})
-      setError('')
       setPrintSuccess(true)
     }
-    window.addEventListener('afterprint', returnToWorkOrderForm)
-    return () => window.removeEventListener('afterprint', returnToWorkOrderForm)
+    window.addEventListener('afterprint', showPrintSuccess)
+    return () => window.removeEventListener('afterprint', showPrintSuccess)
   }, [previewOpen])
 
-  useEffect(() => {
-    if (!printSuccess) return
-    const timer = window.setTimeout(() => setPrintSuccess(false), 3000)
-    return () => window.clearTimeout(timer)
-  }, [printSuccess])
+  function startNewWorkOrder() {
+    setPrintSuccess(false)
+    setItemFg('')
+    setQuantity(1)
+    setDeliveryDate('')
+    setMaster(null)
+    setDocuments({})
+    setOrientation({})
+    setError('')
+  }
 
   async function load(event: FormEvent) {
     event.preventDefault()
@@ -173,7 +171,6 @@ export function WorkOrderPage() {
   const drawingForFirstPage = documents.drawing?.asset.mimeType === 'application/pdf' ? undefined : documents.drawing?.url
 
   return <div className="page">
-    {printSuccess && <div className="wo-success-toast" role="status" aria-live="polite"><CheckCircle2 size={22} /><div><strong>พิมพ์สำเร็จ</strong><span>พร้อมสร้างใบ Work Order ใหม่</span></div></div>}
     <PageHeader eyebrow="PRODUCTION" title="Work Order" description="ค้นหา Item FG และสร้างชุดเอกสารสำหรับเริ่มงานผลิต" />
     <section className="card workorder-setup">
       <div className="card-header"><div><p className="eyebrow">JOB SETUP</p><h2>รายละเอียดใบสั่งงาน</h2></div><span className="status-pill blue">Work Order</span></div>
@@ -194,5 +191,12 @@ export function WorkOrderPage() {
         <SupportingDocumentPage type="drawing" document={documents.drawing} orientation={orientation.drawing ?? 'portrait'} onImageLoad={(event) => rememberOrientation('drawing', event)} />
       </div></div>
     </div></div>, document.body)}
+    {printSuccess && createPortal(<div className="modal-overlay print-success-overlay" role="presentation">
+      <section className="modal-panel print-success-panel" role="dialog" aria-modal="true" aria-labelledby="print-success-title">
+        <header className="modal-header"><span className="modal-icon success"><CheckCircle2 size={24} /></span><div><p className="eyebrow">PRINT COMPLETE</p><h2 id="print-success-title">พิมพ์สำเร็จ</h2></div></header>
+        <div className="modal-body"><p className="print-success-message">พิมพ์เอกสาร Work Order สำเร็จแล้ว กด OK เพื่อกลับไปเริ่มสร้างใบสั่งผลิตใหม่</p></div>
+        <footer className="modal-footer"><button className="button button-primary" type="button" onClick={startNewWorkOrder}>OK</button></footer>
+      </section>
+    </div>, document.body)}
   </div>
 }

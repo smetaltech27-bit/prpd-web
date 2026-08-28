@@ -18,7 +18,7 @@ describe('Work Order print completion', () => {
     vi.clearAllMocks()
   })
 
-  it('returns to a cleared form and hides the success notice automatically after printing', async () => {
+  it('keeps the print-success dialog open until OK and then returns to a cleared form', async () => {
     vi.mocked(searchProductionItems).mockResolvedValue([{
       id: 'material-1',
       itemFg: 'TM0095B',
@@ -41,16 +41,18 @@ describe('Work Order print completion', () => {
 
     expect(await screen.findByRole('dialog', { name: 'Work Order Preview' })).toBeInTheDocument()
 
-    vi.useFakeTimers()
     act(() => window.dispatchEvent(new Event('afterprint')))
 
     expect(screen.queryByRole('dialog', { name: 'Work Order Preview' })).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('พิมพ์สำเร็จ')
+    expect(screen.getByRole('dialog', { name: 'พิมพ์สำเร็จ' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Item FG *')).toHaveValue('TM0095B')
+    expect(screen.getByLabelText('Delivery Date *')).toHaveValue('2026-08-28')
+
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }))
+
+    expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Item FG *')).toHaveValue('')
     expect(screen.getByLabelText('QTY *')).toHaveValue(1)
     expect(screen.getByLabelText('Delivery Date *')).toHaveValue('')
-
-    act(() => vi.advanceTimersByTime(3000))
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
