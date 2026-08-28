@@ -1,4 +1,4 @@
-import { CheckCircle2, FileText, LoaderCircle, Printer, X } from 'lucide-react'
+import { FileText, LoaderCircle, Printer, X } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { PageHeader } from '../components/AppShell'
@@ -104,32 +104,10 @@ export function WorkOrderPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [printSuccess, setPrintSuccess] = useState(false)
 
   useEffect(() => () => {
     Object.values(documents).forEach((document) => URL.revokeObjectURL(document.url))
   }, [documents])
-
-  useEffect(() => {
-    if (!previewOpen) return
-    const showPrintSuccess = () => {
-      setPreviewOpen(false)
-      setPrintSuccess(true)
-    }
-    window.addEventListener('afterprint', showPrintSuccess)
-    return () => window.removeEventListener('afterprint', showPrintSuccess)
-  }, [previewOpen])
-
-  function startNewWorkOrder() {
-    setPrintSuccess(false)
-    setItemFg('')
-    setQuantity(1)
-    setDeliveryDate('')
-    setMaster(null)
-    setDocuments({})
-    setOrientation({})
-    setError('')
-  }
 
   async function load(event: FormEvent) {
     event.preventDefault()
@@ -191,12 +169,5 @@ export function WorkOrderPage() {
         <SupportingDocumentPage type="drawing" document={documents.drawing} orientation={orientation.drawing ?? 'portrait'} onImageLoad={(event) => rememberOrientation('drawing', event)} />
       </div></div>
     </div></div>, document.body)}
-    {printSuccess && createPortal(<div className="modal-overlay print-success-overlay" role="presentation">
-      <section className="modal-panel print-success-panel" role="dialog" aria-modal="true" aria-labelledby="print-success-title">
-        <header className="modal-header"><span className="modal-icon success"><CheckCircle2 size={24} /></span><div><p className="eyebrow">PRINT COMPLETE</p><h2 id="print-success-title">พิมพ์สำเร็จ</h2></div></header>
-        <div className="modal-body"><p className="print-success-message">พิมพ์เอกสาร Work Order สำเร็จแล้ว กด OK เพื่อกลับไปเริ่มสร้างใบสั่งผลิตใหม่</p></div>
-        <footer className="modal-footer"><button className="button button-primary" type="button" onClick={startNewWorkOrder}>OK</button></footer>
-      </section>
-    </div>, document.body)}
   </div>
 }

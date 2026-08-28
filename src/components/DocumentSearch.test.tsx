@@ -64,7 +64,7 @@ describe('DocumentSearch', () => {
     ['drawing', 'Drawing'],
     ['inprocess', 'Inprocess Check Sheet'],
     ['qc', 'QC Check Sheet'],
-  ] as const)('distinguishes cancelled and confirmed %s printing before showing success', async (kind, label) => {
+  ] as const)('returns directly to the %s preview after the system print dialog closes', async (kind, label) => {
     vi.mocked(searchActiveDocuments).mockResolvedValue([{ ...baseDocument, id: `${kind}-1`, type: kind }])
     vi.mocked(fetchPrivateDocument).mockResolvedValue(new Blob([kind], { type: 'image/jpeg' }))
 
@@ -82,21 +82,9 @@ describe('DocumentSearch', () => {
     }))
     fireEvent(window, new Event('afterprint'))
 
-    expect(screen.getByRole('dialog', { name: 'พิมพ์เอกสารแล้วหรือไม่?' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'ไม่ได้พิมพ์' }))
+    expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'พิมพ์เอกสารแล้วหรือไม่?' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
     expect(searchInput).toHaveValue('C12036A')
-
-    fireEvent.click(screen.getByRole('button', { name: `พิมพ์ ${label}` }))
-    fireEvent(window, new Event('afterprint'))
-    fireEvent.click(screen.getByRole('button', { name: 'ยืนยันพิมพ์' }))
-
-    expect(screen.getByRole('dialog', { name: 'พิมพ์สำเร็จ' })).toHaveTextContent(`พิมพ์ ${label} สำเร็จแล้ว`)
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }))
-
-    expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
-    expect(searchInput).toHaveValue('')
-    expect(screen.getByText('พร้อมแสดงตัวอย่างเอกสาร')).toBeInTheDocument()
+    expect(screen.getByAltText(`${label} C12036A`)).toBeInTheDocument()
   })
 })

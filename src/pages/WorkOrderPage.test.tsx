@@ -18,7 +18,7 @@ describe('Work Order print completion', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps the print-success dialog open until OK and then returns to a cleared form', async () => {
+  it('returns directly to the Work Order preview after the system print dialog closes', async () => {
     vi.mocked(searchProductionItems).mockResolvedValue([{
       id: 'material-1',
       itemFg: 'TM0095B',
@@ -41,18 +41,15 @@ describe('Work Order print completion', () => {
 
     expect(await screen.findByRole('dialog', { name: 'Work Order Preview' })).toBeInTheDocument()
 
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { callback(0); return 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'พิมพ์เอกสาร' }))
+    expect(print).toHaveBeenCalledTimes(1)
     act(() => window.dispatchEvent(new Event('afterprint')))
 
-    expect(screen.queryByRole('dialog', { name: 'Work Order Preview' })).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'พิมพ์สำเร็จ' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Work Order Preview' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Item FG *')).toHaveValue('TM0095B')
     expect(screen.getByLabelText('Delivery Date *')).toHaveValue('2026-08-28')
-
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }))
-
-    expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Item FG *')).toHaveValue('')
-    expect(screen.getByLabelText('QTY *')).toHaveValue(1)
-    expect(screen.getByLabelText('Delivery Date *')).toHaveValue('')
   })
 })
