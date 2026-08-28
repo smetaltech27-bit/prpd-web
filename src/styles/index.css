@@ -264,7 +264,7 @@ h1, h2, h3, p { margin-top: 0; }
 .prototype-badge { padding: 7px 10px; border: 1px solid #b7d9f7; border-radius: 999px; color: #0f72c9; background: #edf8ff; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .settings-layout { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 18px; }
 .settings-layout.has-editor { grid-template-columns: minmax(0, 1fr) 390px; }
-.settings-master-table { min-width: 1580px; }
+.settings-master-table { width: 100%; min-width: 1580px; }
 .settings-master-table th,
 .settings-master-table td:not(.settings-empty-results),
 .settings-master-table td strong,
@@ -341,6 +341,12 @@ h1, h2, h3, p { margin-top: 0; }
 .field-error { margin: 6px 0 0; color: #c34854; font-size: 10px; }
 .security-note { margin-top: 17px; padding: 11px; border-radius: 8px; color: #6a7e94; background: #f2f7fc; font-size: 9px; line-height: 1.55; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid #e4edf6; }
+.modal-panel.production-item-modal { width: min(1240px, calc(100vw - 4rem)); max-width: none; margin-top: min(3vh, 28px); }
+.production-item-modal .production-item-modal-body { width: 100%; overflow-x: hidden; }
+.production-item-modal .production-field-grid { gap: 4px 18px; }
+.production-item-modal .production-field-grid .field input { height: 46px; font-size: 13px; }
+.production-item-modal .production-upload-card { min-height: 96px; padding: 16px 18px; }
+.production-item-modal .production-upload-card small { overflow-wrap: anywhere; }
 .print-confirm-overlay { z-index: 140; }
 .print-confirm-panel { width: min(540px, 100%); }
 .print-confirm-numbers { margin-top: 0; padding: 14px 16px; border: 1px solid #d8e8f7; border-radius: 11px; background: #f3f9ff; }
@@ -374,6 +380,14 @@ h1, h2, h3, p { margin-top: 0; }
   .nav-item { padding-block: 6px; }
   .nav-label > span { font-size: 15px; }
   .nav-label > small { font-size: 11px; line-height: 1.3; }
+}
+
+@media (min-width: 1121px) {
+  .settings-page { width: 100%; max-width: none; padding-inline: 24px; }
+  .settings-master-table { min-width: 0; table-layout: fixed; }
+  .settings-master-table th,
+  .settings-master-table td:not(.settings-empty-results) { padding-inline: 8px; overflow-wrap: anywhere; white-space: normal; }
+  .settings-master-table .row-actions { justify-content: flex-end; }
 }
 
 @media (max-width: 1120px) {
