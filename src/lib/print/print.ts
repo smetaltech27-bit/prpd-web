@@ -103,12 +103,8 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
   const safeMarginMm = Math.min(Math.max(marginMm, 0), 40)
   const pageWidthMm = orientation === 'landscape' ? 297 : 210
   const pageHeightMm = orientation === 'landscape' ? 210 : 297
-  const printableWidthMm = pageWidthMm - (safeMarginMm * 2)
-  const printableHeightMm = pageHeightMm - (safeMarginMm * 2)
-  // Keep a final 1 mm inside the CSS page box to absorb browser/printer rounding.
-  const imageHostWidthMm = printableWidthMm - 1
-  const imageHostHeightMm = printableHeightMm - 1
-  const previousTitle = document.title
+  const imageHostWidthMm = pageWidthMm - (safeMarginMm * 2)
+  const imageHostHeightMm = pageHeightMm - (safeMarginMm * 2)
   const host = document.createElement('div')
   const style = document.createElement('style')
   const image = document.createElement('img')
@@ -125,7 +121,7 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
       visibility: hidden;
       pointer-events: none;
     }
-    @page { size: A4 ${orientation}; margin: 0; }
+    @page directDocumentPage { size: A4 ${orientation}; margin: 0; }
     @media print {
       html, body {
         width: ${pageWidthMm}mm !important;
@@ -140,7 +136,8 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
       }
       body > *:not(.direct-print-image-host) { display: none !important; }
       body > .direct-print-image-host {
-        position: relative !important;
+        page: directDocumentPage;
+        position: static !important;
         inset: auto !important;
         z-index: auto !important;
         display: grid !important;
@@ -164,14 +161,12 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
   host.append(image)
   document.head.append(style)
   document.body.append(host)
-  document.title = title
 
   let printed = false
   const cleanup = () => {
     window.removeEventListener('afterprint', cleanup)
     host.remove()
     style.remove()
-    document.title = previousTitle
   }
   const printOnce = () => {
     if (printed) return

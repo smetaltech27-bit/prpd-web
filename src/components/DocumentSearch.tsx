@@ -103,8 +103,8 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
       itemFg: selected.itemFg,
       label: meta.label,
       orientation,
-      marginMm: 10,
-      fit: 'contain',
+      marginMm: 0,
+      fit: kind === 'inprocess' ? 'fill' : 'contain',
     })
   }
 

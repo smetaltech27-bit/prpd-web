@@ -13,18 +13,17 @@ describe('printImage', () => {
     const open = vi.spyOn(window, 'open')
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { callback(0); return 1 })
 
-    printImage('blob:drawing', { orientation: 'landscape', marginMm: 10, fit: 'contain', label: 'Drawing', itemFg: 'C12036A' })
+    printImage('blob:drawing', { orientation: 'landscape', marginMm: 0, fit: 'contain', label: 'Drawing', itemFg: 'C12036A' })
 
     const host = document.querySelector('.direct-print-image-host')
     const image = host?.querySelector('img')
     const style = document.querySelector('style[data-direct-print-image]')
     expect(host).toBeInTheDocument()
-    expect(style).toHaveTextContent('@page { size: A4 landscape; margin: 0; }')
+    expect(style).toHaveTextContent('@page directDocumentPage { size: A4 landscape; margin: 0; }')
     expect(style).toHaveTextContent('width: 297mm !important')
     expect(style).toHaveTextContent('height: 210mm !important')
-    expect(style).toHaveTextContent('width: 276mm !important')
-    expect(style).toHaveTextContent('height: 189mm !important')
-    expect(style).toHaveTextContent('position: relative !important')
+    expect(style).toHaveTextContent('page: directDocumentPage')
+    expect(style).toHaveTextContent('position: static !important')
     expect(style).toHaveTextContent('overflow: hidden !important')
 
     fireEvent.load(image as HTMLImageElement)
