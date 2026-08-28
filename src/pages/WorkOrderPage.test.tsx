@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { findActiveDocuments, listRawMaterials } from '../services/prpdRepository'
+import { findActiveDocuments, searchProductionItems } from '../services/prpdRepository'
 import { WorkOrderPage } from './WorkOrderPage'
 
 vi.mock('../services/prpdRepository', () => ({
   findActiveDocuments: vi.fn(),
-  listRawMaterials: vi.fn(),
+  searchProductionItems: vi.fn(),
 }))
 
 vi.mock('../services/documentStorage', () => ({
@@ -19,7 +19,7 @@ describe('Work Order print completion', () => {
   })
 
   it('returns to a cleared form and hides the success notice automatically after printing', async () => {
-    vi.mocked(listRawMaterials).mockResolvedValue([{
+    vi.mocked(searchProductionItems).mockResolvedValue([{
       id: 'material-1',
       itemFg: 'TM0095B',
       partName: 'COVER(VZ300/500L(3))',

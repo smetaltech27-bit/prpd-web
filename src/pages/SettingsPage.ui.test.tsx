@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createProductionItemWithDocuments } from '../services/prpdRepository'
 import { SettingsPage } from './SettingsPage'
 
-vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: false }))
+vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: true }))
 vi.mock('../services/settingsAccess', () => ({ lockSettings: vi.fn() }))
 vi.mock('../services/documentStorage', () => ({ fetchPrivateDocument: vi.fn() }))
 vi.mock('../services/prpdRepository', () => ({
@@ -11,12 +12,20 @@ vi.mock('../services/prpdRepository', () => ({
   listFactorySupplies: vi.fn(async () => []),
   listRawMaterials: vi.fn(async () => []),
   listVendorNames: vi.fn(async () => []),
+  searchProductionItems: vi.fn(async (query: string) => query === 'TM4207A' ? [{
+    id: 'production-1', itemFg: 'TM4207A', partName: 'ARM A', drawingNo: 'MT524685A',
+    spec: 'AL400', orderCode: '', vendor: '', materialType: '', dimension: '', unitPrice: 0, usage: 1,
+  }] : []),
+  createProductionItemWithDocuments: vi.fn(),
   saveMasterItem: vi.fn(async () => 'saved-id'),
   uploadDocumentAsset: vi.fn(),
 }))
 
 describe('Settings document search', () => {
-  afterEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
 
   it('selects the first search result automatically and clears the complete state', async () => {
     render(<SettingsPage />)
@@ -36,5 +45,32 @@ describe('Settings document search', () => {
     expect(screen.queryByRole('button', { name: /TM4207A/ })).not.toBeInTheDocument()
     expect(screen.getByText('ไม่พบ Item FG')).toBeInTheDocument()
     expect(screen.getByText('กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ')).toBeInTheDocument()
+  })
+
+  it('creates a new production item only after all three required documents are selected', async () => {
+    vi.mocked(createProductionItemWithDocuments).mockResolvedValue({
+      id: 'production-new', itemFg: 'TMNEW01', partName: 'NEW PART', drawingNo: 'DWG-001',
+      spec: 'MODEL-A', orderCode: '', vendor: '', materialType: '', dimension: '', unitPrice: 0, usage: 1,
+    })
+
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Document Files' }))
+    fireEvent.click(screen.getByRole('button', { name: 'เพิ่ม Item ใหม่' }))
+
+    fireEvent.change(screen.getByLabelText('Item FG *'), { target: { value: 'tmnew01' } })
+    fireEvent.change(screen.getByLabelText('Name Part *'), { target: { value: 'NEW PART' } })
+    fireEvent.change(screen.getByLabelText('Drawing No. *'), { target: { value: 'DWG-001' } })
+    fireEvent.change(screen.getByLabelText('Model / SPEC *'), { target: { value: 'MODEL-A' } })
+    fireEvent.change(screen.getByLabelText('ไฟล์ Drawing'), { target: { files: [new File(['drawing'], 'drawing.png', { type: 'image/png' })] } })
+    fireEvent.change(screen.getByLabelText('ไฟล์ Inprocess Check Sheet'), { target: { files: [new File(['inprocess'], 'inprocess.pdf', { type: 'application/pdf' })] } })
+    fireEvent.change(screen.getByLabelText('ไฟล์ QC Check Sheet'), { target: { files: [new File(['qc'], 'qc.jpg', { type: 'image/jpeg' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'สร้าง Item พร้อมเอกสาร' }))
+
+    await waitFor(() => expect(createProductionItemWithDocuments).toHaveBeenCalledTimes(1))
+    expect(createProductionItemWithDocuments).toHaveBeenCalledWith(expect.objectContaining({
+      itemFg: 'TMNEW01', partName: 'NEW PART', drawingNo: 'DWG-001', model: 'MODEL-A',
+    }), expect.any(Function))
+    expect(await screen.findByText('TMNEW01 — NEW PART')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'เพิ่ม Item ใหม่พร้อมเอกสาร' })).not.toBeInTheDocument()
   })
 })

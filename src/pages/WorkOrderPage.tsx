@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { PageHeader } from '../components/AppShell'
 import type { MaterialItem } from '../types/domain'
 import { fetchPrivateDocument } from '../services/documentStorage'
-import { findActiveDocuments, listRawMaterials, type ActiveDocumentAsset } from '../services/prpdRepository'
+import { findActiveDocuments, searchProductionItems, type ActiveDocumentAsset } from '../services/prpdRepository'
 import './workOrder.css'
 
 type PrintDocumentType = 'drawing' | 'inprocess'
@@ -144,10 +144,10 @@ export function WorkOrderPage() {
     setPreviewOpen(false)
     setDocuments({})
     try {
-      const matches = await listRawMaterials(itemFg.trim())
+      const matches = await searchProductionItems(itemFg.trim(), 10)
       const normalized = itemFg.trim().toLocaleUpperCase()
       const exact = matches.find((item) => item.itemFg.trim().toLocaleUpperCase() === normalized)
-      if (!exact) throw new Error(`ไม่พบ Item FG “${itemFg.trim()}” ใน Raw Material Master`)
+      if (!exact) throw new Error(`ไม่พบ Item FG “${itemFg.trim()}” ใน Production Item Master`)
 
       const assets = (await findActiveDocuments(exact.itemFg)).filter((asset) => asset.type === 'drawing' || asset.type === 'inprocess')
       const loadedEntries = await Promise.all(assets.map(async (asset) => {

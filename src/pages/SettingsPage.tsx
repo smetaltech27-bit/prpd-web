@@ -1,10 +1,11 @@
-import { Archive, FileCheck2, FileImage, FileUp, LockKeyhole, Pencil, Plus, Save, Search, X } from 'lucide-react'
+import { Archive, CheckCircle2, FileCheck2, FileImage, FileUp, LoaderCircle, LockKeyhole, Pencil, Plus, Save, Search, X } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { rawMaterials, equipmentItems } from '../app/mockData'
 import { PageHeader } from '../components/AppShell'
 import { lockSettings } from '../services/settingsAccess'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { deactivateMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, deactivateMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
 import { fetchPrivateDocument } from '../services/documentStorage'
 import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
 import type { MaterialItem } from '../types/domain'
@@ -12,6 +13,20 @@ import type { MaterialItem } from '../types/domain'
 type SettingsTab = 'raw' | 'equipment' | 'documents'
 
 const emptyItem: MaterialItem = { id: '', itemFg: '', partName: '', spec: '', drawingNo: '', orderCode: '', vendor: '', materialType: '', dimension: '', unitPrice: 0, usage: 1, comment: '' }
+const documentTypes: Array<{ type: DocumentAssetType; label: string; hint: string }> = [
+  { type: 'drawing', label: 'Drawing', hint: 'แบบงานหรือ Drawing หลัก' },
+  { type: 'inprocess', label: 'Inprocess Check Sheet', hint: 'ใบตรวจระหว่างกระบวนการผลิต' },
+  { type: 'qc', label: 'QC Check Sheet', hint: 'ใบตรวจสอบคุณภาพ' },
+]
+
+interface NewProductionItemForm {
+  itemFg: string
+  partName: string
+  drawingNo: string
+  model: string
+}
+
+const emptyProductionItem: NewProductionItemForm = { itemFg: '', partName: '', drawingNo: '', model: '' }
 
 export function SettingsPage() {
   const [tab, setTab] = useState<SettingsTab>('raw')
@@ -171,6 +186,12 @@ function DocumentManager() {
   const [loadingAssets, setLoadingAssets] = useState(false)
   const [previewAsset, setPreviewAsset] = useState<ActiveDocumentAsset | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [newItemOpen, setNewItemOpen] = useState(false)
+  const [newItemForm, setNewItemForm] = useState<NewProductionItemForm>(emptyProductionItem)
+  const [newItemFiles, setNewItemFiles] = useState<Partial<Record<DocumentAssetType, File>>>({})
+  const [uploadStatuses, setUploadStatuses] = useState<Partial<Record<DocumentAssetType, DocumentUploadStatus>>>({})
+  const [creatingItem, setCreatingItem] = useState(false)
+  const [newItemError, setNewItemError] = useState('')
 
   async function searchItems(event: FormEvent) {
     event.preventDefault()
@@ -183,8 +204,9 @@ function DocumentManager() {
     setSelected(null)
     setAssets([])
     try {
-      const source = isSupabaseConfigured ? await listRawMaterials() : rawMaterials
-      const matches = source.filter((item) => matchesMasterSearch(item, query))
+      const matches = isSupabaseConfigured
+        ? await searchProductionItems(query)
+        : rawMaterials.filter((item) => matchesMasterSearch(item, query))
       setItems(matches)
       setSelected(matches[0] ?? null)
       setSearched(true)
@@ -206,6 +228,51 @@ function DocumentManager() {
     setNotice('')
     setPreviewAsset(null)
     setPreviewUrl('')
+  }
+
+  function closeNewItem() {
+    if (creatingItem) return
+    setNewItemOpen(false)
+    setNewItemForm(emptyProductionItem)
+    setNewItemFiles({})
+    setUploadStatuses({})
+    setNewItemError('')
+  }
+
+  async function createNewItem(event: FormEvent) {
+    event.preventDefault()
+    const completeFiles = documentTypes.every(({ type }) => Boolean(newItemFiles[type]))
+    if (!completeFiles) {
+      setNewItemError('กรุณาเลือกไฟล์ Drawing, Inprocess Check Sheet และ QC Check Sheet ให้ครบ')
+      return
+    }
+    if (!isSupabaseConfigured) {
+      setNewItemError('ระบบ Prototype ไม่สามารถอัปโหลดเอกสารจริงได้')
+      return
+    }
+
+    setCreatingItem(true)
+    setNewItemError('')
+    setUploadStatuses({})
+    try {
+      const created = await createProductionItemWithDocuments({
+        ...newItemForm,
+        files: newItemFiles as Record<DocumentAssetType, File>,
+      }, (type, status) => setUploadStatuses((current) => ({ ...current, [type]: status })))
+      setQuery(created.itemFg)
+      setItems([created])
+      setSelected(created)
+      setSearched(true)
+      setNotice(`สร้าง Item ${created.itemFg} พร้อมเอกสารทั้ง 3 รายการแล้ว`)
+      setNewItemOpen(false)
+      setNewItemForm(emptyProductionItem)
+      setNewItemFiles({})
+      setUploadStatuses({})
+    } catch (error) {
+      setNewItemError(error instanceof Error ? error.message : 'สร้าง Production Item ไม่สำเร็จ')
+    } finally {
+      setCreatingItem(false)
+    }
   }
 
   async function refreshAssets(itemFg: string) {
@@ -254,21 +321,45 @@ function DocumentManager() {
     try {
       await uploadDocumentAsset(selected.itemFg, type, file)
       await refreshAssets(selected.itemFg)
-      setNotice(`${label}: อัปโหลด ${file.name} และสร้าง Version ใหม่แล้ว`)
+      setPreviewAsset(null)
+      setNotice(`${label}: เปลี่ยนไฟล์ Active เป็น ${file.name} และเก็บ Revision เดิมไว้แล้ว`)
     } catch (error) {
       setNotice(`${label}: อัปโหลดไม่สำเร็จ — ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
   const assetByType = new Map(assets.map((asset) => [asset.type, asset]))
-  return <div className="document-settings-grid">
-    <section className="card document-master-list"><div className="card-header"><div><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div></div><form className="document-settings-search" onSubmit={searchItems}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Name Part หรือ DWG No.…" /></label><button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button><button className="button button-secondary" type="button" onClick={clearDocumentSearch} disabled={!query && !items.length && !selected && !notice}><X size={17} />ล้างข้อมูล</button></form><div className="result-list">{items.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}{!items.length && <p className="settings-result-message">{searched ? 'ไม่พบ Item FG ที่ตรงกับคำค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</p>}</div></section>
-    <section className="card file-manager"><div className="card-header"><div><p className="eyebrow">PRIVATE R2 DOCUMENTS</p><h2>{selected ? `${selected.itemFg} — ${selected.partName}` : 'ไม่พบ Item FG'}</h2></div></div>{notice && <div className="inline-notice"><FileUp size={17} />{notice}</div>}
-      {selected && ([['Drawing', 'drawing'], ['Inprocess Check Sheet', 'inprocess'], ['QC Check Sheet', 'qc']] as const).map(([label, type]) => {
+  return <>
+    <div className="document-settings-grid">
+    <section className="card document-master-list"><div className="card-header"><div><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div><button className="button button-primary" onClick={() => setNewItemOpen(true)}><Plus size={17} />เพิ่ม Item ใหม่</button></div><form className="document-settings-search" onSubmit={searchItems}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Name Part หรือ DWG No.…" /></label><button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button><button className="button button-secondary" type="button" onClick={clearDocumentSearch} disabled={!query && !items.length && !selected && !notice}><X size={17} />ล้างข้อมูล</button></form><div className="result-list">{items.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}{!items.length && <p className="settings-result-message">{searched ? 'ไม่พบ Item FG ที่ตรงกับคำค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</p>}</div></section>
+    <section className="card file-manager"><div className="card-header"><div><p className="eyebrow">PRIVATE R2 DOCUMENTS</p><h2>{selected ? `${selected.itemFg} — ${selected.partName}` : 'ไม่พบ Item FG'}</h2>{selected && <small className="production-item-model">Model / SPEC: {selected.spec || '—'} • DWG: {selected.drawingNo || '—'}</small>}</div></div>{notice && <div className="inline-notice"><FileUp size={17} />{notice}</div>}
+      {selected && documentTypes.map(({ label, type }) => {
         const asset = assetByType.get(type)
-        return <article className="upload-row" key={label}><span className={`availability ${asset ? 'found' : 'missing'}`}>{asset ? <FileCheck2 /> : <FileImage />}</span><div><strong>{label}</strong><small>{loadingAssets ? 'กำลังตรวจสอบ…' : asset ? `${asset.filename} • Version ${asset.version}` : 'ยังไม่มีไฟล์ที่ Active'}</small></div>{asset && <button className="button button-ghost" onClick={() => setPreviewAsset(asset)}>Preview</button>}<label className="button button-secondary upload-button"><FileUp size={16} />{asset ? 'Add revision' : 'Add file'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => void upload(label, type, event.target.files?.[0])} /></label></article>
+        return <article className="upload-row" key={label}><span className={`availability ${asset ? 'found' : 'missing'}`}>{asset ? <FileCheck2 /> : <FileImage />}</span><div><strong>{label}</strong><small>{loadingAssets ? 'กำลังตรวจสอบ…' : asset ? `${asset.filename} • Version ${asset.version} • Active` : 'ยังไม่มีไฟล์ที่ Active'}</small></div>{asset && <button className="button button-ghost" onClick={() => setPreviewAsset(asset)}>Preview</button>}<label className="button button-secondary upload-button"><FileUp size={16} />{asset ? 'เปลี่ยนไฟล์ / Add Revision' : `เพิ่มไฟล์ ${label}`}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void upload(label, type, file) }} /></label></article>
       })}
       {previewAsset && <div className="settings-document-preview"><div className="card-header"><div><p className="eyebrow">PREVIEW</p><h2>{previewAsset.itemFg} • {previewAsset.filename}</h2></div><button className="icon-button" onClick={() => setPreviewAsset(null)} aria-label="ปิด Preview"><X size={18} /></button></div>{previewUrl ? (previewAsset.mimeType === 'application/pdf' ? <iframe src={previewUrl} title={previewAsset.filename} /> : <img src={previewUrl} alt={previewAsset.filename} />) : <p>กำลังโหลดเอกสาร…</p>}</div>}
       <p className="helper-text">ต้นฉบับเก็บใน Cloudflare R2 แบบ Private และ Supabase เก็บ Metadata/Version เท่านั้น</p>
     </section>
-  </div>
+    </div>
+    {newItemOpen && createPortal(<div className="modal-overlay production-item-overlay" role="presentation">
+      <section className="modal-panel production-item-modal" role="dialog" aria-modal="true" aria-labelledby="new-production-item-title">
+        <header className="modal-header"><span className="modal-icon"><Plus size={22} /></span><div><p className="eyebrow">PRODUCTION ITEM MASTER</p><h2 id="new-production-item-title">เพิ่ม Item ใหม่พร้อมเอกสาร</h2></div><button className="icon-button" type="button" onClick={closeNewItem} disabled={creatingItem} aria-label="ปิด"><X size={19} /></button></header>
+        <form className="production-item-form" onSubmit={createNewItem}>
+          <div className="modal-body production-item-modal-body">
+            <section className="production-item-fields"><div className="production-form-heading"><span>1</span><div><strong>ข้อมูล Item</strong><small>ข้อมูลนี้จะแสดงใน Work Order และหน้าพิมพ์เอกสาร</small></div></div>
+              <div className="production-field-grid"><Field label="Item FG" required value={newItemForm.itemFg} onChange={(value) => setNewItemForm({ ...newItemForm, itemFg: value.toLocaleUpperCase() })} /><Field label="Name Part" required value={newItemForm.partName} onChange={(value) => setNewItemForm({ ...newItemForm, partName: value })} /><Field label="Drawing No." required value={newItemForm.drawingNo} onChange={(value) => setNewItemForm({ ...newItemForm, drawingNo: value })} /><Field label="Model / SPEC" required value={newItemForm.model} onChange={(value) => setNewItemForm({ ...newItemForm, model: value })} /></div>
+            </section>
+            <section className="production-document-fields"><div className="production-form-heading"><span>2</span><div><strong>เอกสารประกอบการผลิต</strong><small>ต้องเลือกไฟล์ให้ครบทั้ง 3 รายการก่อนบันทึก รองรับ JPG, PNG, WEBP และ PDF ไม่เกิน 25 MB</small></div></div>
+              <div className="production-upload-grid">{documentTypes.map(({ type, label, hint }) => {
+                const file = newItemFiles[type]
+                const status = uploadStatuses[type]
+                return <label className={`production-upload-card ${file ? 'has-file' : ''}`} key={type}><input type="file" aria-label={`ไฟล์ ${label}`} accept="image/jpeg,image/png,image/webp,application/pdf" required={!file} disabled={creatingItem} onChange={(event) => { const nextFile = event.target.files?.[0]; if (nextFile) setNewItemFiles((current) => ({ ...current, [type]: nextFile })) }} /><span className="production-upload-icon">{status === 'uploading' ? <LoaderCircle className="spin" /> : status === 'uploaded' || file ? <CheckCircle2 /> : <FileUp />}</span><span><strong>{label} *</strong><small>{status === 'uploading' ? 'กำลังอัปโหลด…' : status === 'uploaded' ? 'อัปโหลดแล้ว รอบันทึกข้อมูล' : file ? `${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB` : hint}</small></span><b>{file ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์'}</b></label>
+              })}</div>
+            </section>
+            {newItemError && <div className="production-item-error" role="alert">{newItemError}</div>}
+          </div>
+          <footer className="modal-footer"><button className="button button-secondary" type="button" onClick={closeNewItem} disabled={creatingItem}>ยกเลิก</button><button className="button button-primary" type="submit" disabled={creatingItem}>{creatingItem ? <LoaderCircle className="spin" size={17} /> : <Save size={17} />}{creatingItem ? 'กำลังสร้าง Item และอัปโหลด…' : 'สร้าง Item พร้อมเอกสาร'}</button></footer>
+        </form>
+      </section>
+    </div>, document.body)}
+  </>
 }

@@ -121,6 +121,24 @@ export interface ActiveDocumentAsset extends PrivateDocumentLocation {
 }
 
 export type DocumentAssetType = 'drawing' | 'inprocess' | 'qc'
+export type DocumentUploadStatus = 'uploading' | 'uploaded'
+
+export interface CreateProductionItemInput {
+  itemFg: string
+  partName: string
+  drawingNo: string
+  model: string
+  files: Record<DocumentAssetType, File>
+}
+
+interface ProductionItemRpcRow {
+  id: string
+  item_fg: string
+  name_part: string
+  drawing_no: string
+  model: string
+  source: 'production' | 'raw_material'
+}
 
 interface DocumentAssetRow {
   id: string
@@ -336,6 +354,33 @@ export async function searchActiveDocuments(
   return ((data ?? []) as DocumentAssetRow[]).map(mapDocumentAsset)
 }
 
+function mapProductionItem(row: ProductionItemRpcRow): MaterialItem {
+  return {
+    id: row.id,
+    itemFg: row.item_fg,
+    partName: row.name_part,
+    spec: row.model,
+    drawingNo: row.drawing_no,
+    orderCode: '',
+    vendor: '',
+    materialType: '',
+    dimension: '',
+    unitPrice: 0,
+    usage: 1,
+    comment: row.source,
+  }
+}
+
+export async function searchProductionItems(query: string, limit = 50): Promise<MaterialItem[]> {
+  if (!supabase || !query.trim()) return []
+  const { data, error } = await supabase.rpc('search_production_items', {
+    p_query: query.trim(),
+    p_limit: limit,
+  })
+  if (error) throw error
+  return ((data ?? []) as ProductionItemRpcRow[]).map(mapProductionItem)
+}
+
 function normalizeVendorName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
 }
@@ -434,4 +479,63 @@ export async function uploadDocumentAsset(
     throw new Error(`File uploaded but metadata failed: ${metadataError.message}`)
   }
   return storagePath
+}
+
+function validateDocumentFile(file: File) {
+  if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} มีขนาดเกิน 25 MB`)
+  const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+  if (!allowedTypes.has(file.type)) throw new Error(`${file.name} เป็นชนิดไฟล์ที่ไม่รองรับ`)
+}
+
+export async function createProductionItemWithDocuments(
+  input: CreateProductionItemInput,
+  onProgress?: (type: DocumentAssetType, status: DocumentUploadStatus) => void,
+): Promise<MaterialItem> {
+  if (!settingsSupabase) throw new Error('Settings access is not configured')
+  const itemFg = input.itemFg.trim().toLocaleUpperCase()
+  if (!itemFg || !input.partName.trim() || !input.drawingNo.trim() || !input.model.trim()) {
+    throw new Error('กรุณากรอก Item FG, Name Part, Drawing No. และ Model ให้ครบ')
+  }
+
+  const existing = await searchProductionItems(itemFg, 10)
+  if (existing.some((item) => item.itemFg.trim().toLocaleUpperCase() === itemFg)) {
+    throw new Error(`Item FG “${itemFg}” มีอยู่ในระบบแล้ว`)
+  }
+
+  const documentTypes: DocumentAssetType[] = ['drawing', 'inprocess', 'qc']
+  const documents: Array<Record<string, string | number>> = []
+  for (const type of documentTypes) {
+    const file = input.files[type]
+    if (!file) throw new Error('กรุณาเลือกไฟล์ Drawing, Inprocess และ QC ให้ครบ')
+    validateDocumentFile(file)
+    const storagePath = createImmutableDocumentPath(itemFg, type, file.name)
+    onProgress?.(type, 'uploading')
+    await uploadPrivateDocument(storagePath, file)
+    onProgress?.(type, 'uploaded')
+    documents.push({
+      document_type: type,
+      storage_path: storagePath,
+      original_filename: file.name,
+      mime_type: file.type,
+      size_bytes: file.size,
+    })
+  }
+
+  const { data, error } = await settingsSupabase.rpc('create_production_item_with_documents', {
+    p_item_fg: itemFg,
+    p_name_part: input.partName.trim(),
+    p_drawing_no: input.drawingNo.trim(),
+    p_model: input.model.trim(),
+    p_documents: documents,
+  })
+  if (error) throw error
+
+  return mapProductionItem({
+    id: String(data),
+    item_fg: itemFg,
+    name_part: input.partName.trim(),
+    drawing_no: input.drawingNo.trim(),
+    model: input.model.trim(),
+    source: 'production',
+  })
 }

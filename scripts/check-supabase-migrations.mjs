@@ -21,6 +21,7 @@ const expectedOrder = [
   '202608270001_print_confirmation_workflow.sql',
   '202608270002_reuse_reserved_pr_numbers.sql',
   '202608270003_restore_raw_material_112200.sql',
+  '202608270004_production_item_master.sql',
 ];
 const errors = [];
 
@@ -44,6 +45,7 @@ const exposedTables = [
   'profiles',
   'vendors',
   'raw_materials',
+  'production_items',
   'factory_supplies',
   'document_assets',
   'purchase_requests',
@@ -68,6 +70,8 @@ for (const required of [
   'PR-',
   "'prpd-documents'",
   'public.search_document_assets(',
+  'public.search_production_items(',
+  'public.create_production_item_with_documents(',
   'public.search_pr_history(',
 ]) {
   if (!allSql.includes(required)) errors.push(`Missing required migration token: ${required}`);
