@@ -48,8 +48,9 @@ describe('Settings document search', () => {
   })
 
   it('shows separated master-data columns and removes Item FG from equipment', () => {
-    render(<SettingsPage />)
+    const { container } = render(<SettingsPage />)
 
+    expect(container.querySelector('.settings-layout')).not.toHaveClass('has-editor')
     expect(screen.getByRole('columnheader', { name: 'ITEM FG' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'PART' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'SPEC' })).toBeInTheDocument()
@@ -60,6 +61,10 @@ describe('Settings document search', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Factory Supply / Equipment' }))
     expect(screen.queryByRole('columnheader', { name: 'ITEM FG' })).not.toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'PART' })).toBeInTheDocument()
+    expect(container.querySelector('.settings-search-form')).toHaveClass('has-vendor')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Equipment' }))
+    expect(container.querySelector('.settings-layout')).toHaveClass('has-editor')
   })
 
   it('places the horizontal Item Master bar before Private R2 Documents', () => {
