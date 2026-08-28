@@ -1,6 +1,7 @@
-import { Filter, LoaderCircle, Search } from 'lucide-react'
+import { FileSpreadsheet, Filter, LoaderCircle, Search } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { PageHeader } from '../components/AppShell'
+import { downloadHistoryWorkbook } from '../features/pr/historyExport'
 import { searchPrHistory, type PrHistoryLine } from '../services/prpdRepository'
 
 type HistoryTab = 'raw_material' | 'factory_supply'
@@ -57,6 +58,7 @@ export function HistoryPage() {
         <label><span>Code RM</span><input value={codeOrderRm} onChange={(event) => setCodeOrderRm(event.target.value)} /></label>
         <button className="button button-primary" disabled={loading}>{loading ? <LoaderCircle className="spin" /> : <Search size={17} />}{loading ? 'กำลังค้นหา…' : 'ค้นหา'}</button>
         <button className="button button-secondary" type="button" onClick={() => { setRequestDate(''); setPrNumber(''); setVendor(''); setItemFg(''); setCodeOrderRm('') }}><Filter size={17} /> ล้างตัวกรอง</button>
+        <button className="button button-secondary" type="button" disabled={loading || !rows.length} onClick={() => downloadHistoryWorkbook(rows, tab)}><FileSpreadsheet size={17} /> Export Excel</button>
       </form>
       {error && <div className="flow-notice error">{error}</div>}
       <div className="table-wrap history-lines-wrap"><table className="data-table history-lines-table"><thead><tr>
