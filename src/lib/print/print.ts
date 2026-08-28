@@ -100,6 +100,14 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
     marginMm = 0,
     fit = 'contain',
   } = options
+  const safeMarginMm = Math.min(Math.max(marginMm, 0), 40)
+  const pageWidthMm = orientation === 'landscape' ? 297 : 210
+  const pageHeightMm = orientation === 'landscape' ? 210 : 297
+  const printableWidthMm = pageWidthMm - (safeMarginMm * 2)
+  const printableHeightMm = pageHeightMm - (safeMarginMm * 2)
+  // Keep a final 1 mm inside the CSS page box to absorb browser/printer rounding.
+  const imageHostWidthMm = printableWidthMm - 1
+  const imageHostHeightMm = printableHeightMm - 1
   const previousTitle = document.title
   const host = document.createElement('div')
   const style = document.createElement('style')
@@ -117,24 +125,28 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
       visibility: hidden;
       pointer-events: none;
     }
-    @page { size: A4 ${orientation}; margin: ${marginMm}mm; }
+    @page { size: A4 ${orientation}; margin: ${safeMarginMm}mm; }
     @media print {
       html, body {
-        width: 100% !important;
-        height: 100% !important;
+        width: ${printableWidthMm}mm !important;
+        height: ${printableHeightMm}mm !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: hidden !important;
       }
+      body {
+        display: grid !important;
+        place-items: center !important;
+      }
       body > *:not(.direct-print-image-host) { display: none !important; }
       body > .direct-print-image-host {
-        position: fixed !important;
-        inset: 0 !important;
+        position: relative !important;
+        inset: auto !important;
         z-index: auto !important;
         display: grid !important;
         place-items: center !important;
-        width: 100% !important;
-        height: 100% !important;
+        width: ${imageHostWidthMm}mm !important;
+        height: ${imageHostHeightMm}mm !important;
         overflow: hidden !important;
         visibility: visible !important;
       }
