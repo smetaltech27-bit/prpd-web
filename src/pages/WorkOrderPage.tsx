@@ -1,4 +1,4 @@
-import { FileText, LoaderCircle, Printer, X } from 'lucide-react'
+import { FileText, LoaderCircle, Printer, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { PageHeader } from '../components/AppShell'
@@ -146,6 +146,17 @@ export function WorkOrderPage() {
     setOrientation((current) => ({ ...current, [type]: image.naturalWidth > image.naturalHeight ? 'landscape' : 'portrait' }))
   }
 
+  function clearForm() {
+    setItemFg('')
+    setQuantity(1)
+    setDeliveryDate('')
+    setMaster(null)
+    setDocuments({})
+    setOrientation({})
+    setError('')
+    setPreviewOpen(false)
+  }
+
   const drawingForFirstPage = documents.drawing?.asset.mimeType === 'application/pdf' ? undefined : documents.drawing?.url
 
   return <div className="page">
@@ -157,6 +168,7 @@ export function WorkOrderPage() {
         <label><span>QTY *</span><input type="number" min="1" value={quantity} onChange={(event) => setQuantity(Math.max(1, Number(event.target.value)))} /></label>
         <label><span>Delivery Date *</span><input type="date" value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} /></label>
         <button className="button button-primary" type="submit" disabled={loading}>{loading ? <LoaderCircle className="spin" /> : <FileText size={17} />}{loading ? 'กำลังสร้าง…' : 'สร้างใบ Work Order'}</button>
+        <button className="button button-secondary" type="button" onClick={clearForm} disabled={loading || (!itemFg && quantity === 1 && !deliveryDate && !master && !error)}><RotateCcw size={17} />ล้างข้อมูล</button>
       </form>
       {error && <div className="flow-notice error">{error}</div>}
     </section>

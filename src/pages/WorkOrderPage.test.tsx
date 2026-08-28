@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { findActiveDocuments, searchProductionItems } from '../services/prpdRepository'
 import { WorkOrderPage } from './WorkOrderPage'
@@ -14,6 +14,7 @@ vi.mock('../services/documentStorage', () => ({
 
 describe('Work Order print completion', () => {
   afterEach(() => {
+    cleanup()
     vi.useRealTimers()
     vi.clearAllMocks()
   })
@@ -51,5 +52,18 @@ describe('Work Order print completion', () => {
     expect(screen.queryByRole('dialog', { name: 'พิมพ์สำเร็จ' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Item FG *')).toHaveValue('TM0095B')
     expect(screen.getByLabelText('Delivery Date *')).toHaveValue('2026-08-28')
+  })
+
+  it('clears the Work Order form and restores the default quantity', () => {
+    render(<WorkOrderPage />)
+
+    fireEvent.change(screen.getByLabelText('Item FG *'), { target: { value: 'TM0095B' } })
+    fireEvent.change(screen.getByLabelText('QTY *'), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText('Delivery Date *'), { target: { value: '2026-08-28' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ล้างข้อมูล' }))
+
+    expect(screen.getByLabelText('Item FG *')).toHaveValue('')
+    expect(screen.getByLabelText('QTY *')).toHaveValue(1)
+    expect(screen.getByLabelText('Delivery Date *')).toHaveValue('')
   })
 })

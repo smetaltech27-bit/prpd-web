@@ -199,7 +199,7 @@ h1, h2, h3, p { margin-top: 0; }
 .paper-lines { width: 100%; flex: 1; margin-top: 15px; background: repeating-linear-gradient(#edf1f5 0 1px, transparent 1px 18px); }
 
 .workorder-setup { padding-bottom: 20px; }
-.form-grid { display: grid; grid-template-columns: 1.2fr .7fr .8fr auto; align-items: end; gap: 13px; padding: 20px; }
+.form-grid { display: grid; grid-template-columns: 1.2fr .7fr .8fr auto auto; align-items: end; gap: 13px; padding: 20px; }
 .form-grid label > span, .field > span { display: block; margin-bottom: 7px; color: #5c7088; font-size: 10px; font-weight: 700; }
 .form-grid input, .field input { width: 100%; height: 42px; padding: 0 11px; border: 1px solid #cfddec; border-radius: 8px; outline: none; color: #233c58; background: white; }
 .form-grid input:focus, .field input:focus { border-color: #65a8eb; box-shadow: 0 0 0 3px rgba(34,167,232,.1); }
