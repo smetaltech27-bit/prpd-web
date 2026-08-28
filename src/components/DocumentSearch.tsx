@@ -1,5 +1,6 @@
-import { FileSearch, FileWarning, LoaderCircle, Printer, RotateCcw, Search } from 'lucide-react'
+import { CheckCircle2, FileSearch, FileWarning, LoaderCircle, Printer, RotateCcw, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type SyntheticEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { DocumentKind } from '../types/domain'
 import { EmptyState, PageHeader } from './AppShell'
 import { fetchPrivateDocument } from '../services/documentStorage'
@@ -23,7 +24,9 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState('')
   const [orientation, setOrientation] = useState<PrintOrientation>('portrait')
+  const [printSuccess, setPrintSuccess] = useState(false)
   const previewFrameRef = useRef<HTMLIFrameElement>(null)
+  const pendingAfterPrintRef = useRef<{ target: Window; handler: () => void } | null>(null)
   const meta = config[kind]
   const selected = useMemo(() => results.find((document) => document.id === selectedId) ?? null, [results, selectedId])
 
@@ -50,6 +53,11 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [selected])
+
+  useEffect(() => () => {
+    const pending = pendingAfterPrintRef.current
+    if (pending) pending.target.removeEventListener('afterprint', pending.handler)
+  }, [])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -87,6 +95,22 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
     setOrientation('portrait')
   }
 
+  function armPrintSuccess(target: Window) {
+    const pending = pendingAfterPrintRef.current
+    if (pending) pending.target.removeEventListener('afterprint', pending.handler)
+    const handler = () => {
+      pendingAfterPrintRef.current = null
+      setPrintSuccess(true)
+    }
+    pendingAfterPrintRef.current = { target, handler }
+    target.addEventListener('afterprint', handler, { once: true })
+  }
+
+  function startNewDocumentSearch() {
+    setPrintSuccess(false)
+    clearSearch()
+  }
+
   function printSelected() {
     if (!selected || !previewUrl) return
     if (selected.mimeType === 'application/pdf') {
@@ -95,10 +119,12 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
         setPreviewError('ยังไม่สามารถสั่งพิมพ์ PDF ได้ กรุณารอให้ Preview โหลดเสร็จแล้วลองอีกครั้ง')
         return
       }
+      armPrintSuccess(frameWindow)
       frameWindow.focus()
       frameWindow.print()
       return
     }
+    armPrintSuccess(window)
     printImage(previewUrl, {
       itemFg: selected.itemFg,
       label: meta.label,
@@ -137,6 +163,13 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
             <button className="button button-primary" onClick={printSelected}><Printer size={16} /> พิมพ์ {meta.label}</button>
           </>}
       </section>
+      {printSuccess && createPortal(<div className="modal-overlay print-success-overlay" role="presentation">
+        <section className="modal-panel print-success-panel" role="dialog" aria-modal="true" aria-labelledby={`${kind}-print-success-title`}>
+          <header className="modal-header"><span className="modal-icon success"><CheckCircle2 size={24} /></span><div><p className="eyebrow">PRINT COMPLETE</p><h2 id={`${kind}-print-success-title`}>พิมพ์สำเร็จ</h2></div></header>
+          <div className="modal-body"><p className="print-success-message">พิมพ์ {meta.label} สำเร็จแล้ว กด OK เพื่อกลับไปเริ่มค้นหาเอกสารใหม่</p></div>
+          <footer className="modal-footer"><button className="button button-primary" type="button" onClick={startNewDocumentSearch}>OK</button></footer>
+        </section>
+      </div>, document.body)}
     </div>
   )
 }
