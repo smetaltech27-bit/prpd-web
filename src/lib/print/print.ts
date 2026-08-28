@@ -125,11 +125,11 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
       visibility: hidden;
       pointer-events: none;
     }
-    @page { size: A4 ${orientation}; margin: ${safeMarginMm}mm; }
+    @page { size: A4 ${orientation}; margin: 0; }
     @media print {
       html, body {
-        width: ${printableWidthMm}mm !important;
-        height: ${printableHeightMm}mm !important;
+        width: ${pageWidthMm}mm !important;
+        height: ${pageHeightMm}mm !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: hidden !important;
