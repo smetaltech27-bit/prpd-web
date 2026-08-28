@@ -345,7 +345,8 @@ h1, h2, h3, p { margin-top: 0; }
 .production-item-modal .production-item-modal-body { width: 100%; overflow-x: hidden; }
 .production-item-modal .production-field-grid { gap: 4px 18px; }
 .production-item-modal .production-field-grid .field input { height: 46px; font-size: 13px; }
-.production-item-modal .production-upload-card { min-height: 96px; padding: 16px 18px; }
+.production-item-modal .production-upload-grid { gap: 8px; }
+.production-item-modal .production-upload-card { min-height: 78px; padding: 11px 16px; }
 .production-item-modal .production-upload-card small { overflow-wrap: anywhere; }
 .print-confirm-overlay { z-index: 140; }
 .print-confirm-panel { width: min(540px, 100%); }
