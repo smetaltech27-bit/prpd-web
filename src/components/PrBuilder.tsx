@@ -450,12 +450,12 @@ function EquipmentTable({ items, selected, toggle, update }: {
   toggle: (item: MaterialItem) => void
   update: (id: string, patch: Partial<PrLineItem>) => void
 }) {
-  return <div className="table-wrap legacy-flow-table"><table className="data-table editable-table"><thead><tr><th>เลือก</th><th>Code RM</th><th>Name Part</th><th>Spec / Dimension</th><th>Type</th><th>Vendor</th><th>Price</th><th>Q’ty</th></tr></thead><tbody>
+  return <div className="table-wrap legacy-flow-table"><table className="data-table editable-table equipment-pr-table"><thead><tr><th>เลือก</th><th>Code RM</th><th>Name Part</th><th>Spec</th><th>Dimension</th><th>Type</th><th>Vendor</th><th>Price</th><th>Q’ty</th></tr></thead><tbody>
     {items.map((item) => {
       const line = selected[item.id]
       return <tr key={item.id} className={line ? 'selected-row' : ''}>
         <td><input className="row-checkbox" type="checkbox" checked={Boolean(line)} onChange={() => toggle(item)} /></td>
-        <td><strong>{item.orderCode || '-'}</strong></td><td>{item.partName}</td><td><strong>{item.spec}</strong><span>{item.dimension}</span></td><td>{item.materialType}</td><td>{item.vendor}</td>
+        <td>{item.orderCode || '-'}</td><td>{item.partName}</td><td>{item.spec || '-'}</td><td>{item.dimension || '-'}</td><td>{item.materialType}</td><td>{item.vendor}</td>
         <td>{line ? <input className="number-input" type="number" min="0" step="0.01" value={line.unitPrice ?? 0} onChange={(event) => update(item.id, { unitPrice: numberValue(event) })} /> : item.unitPrice.toLocaleString()}</td>
         <td>{line ? <input className="number-input" type="number" min="0.0001" step="any" value={line.quantity} onChange={(event) => update(item.id, { quantity: numberValue(event) })} /> : '-'}</td>
       </tr>

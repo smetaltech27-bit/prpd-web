@@ -166,6 +166,11 @@ h1, h2, h3, p { margin-top: 0; }
 .raw-material-table td span,
 .raw-material-table input { color: #000; }
 .raw-material-table .item-fg-value { margin-top: 0; color: #000; font-size: 11px; font-weight: 400; }
+.equipment-pr-table th,
+.equipment-pr-table td,
+.equipment-pr-table td strong,
+.equipment-pr-table td span,
+.equipment-pr-table input { color: #000; font-weight: 400; }
 .icon-button.danger { color: var(--danger); }
 .legacy-pr-actions { display: flex; align-items: end; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--line); }
 
