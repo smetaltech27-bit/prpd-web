@@ -108,6 +108,16 @@ export interface PrHistoryFilters {
   codeOrderRm?: string
 }
 
+export interface DeletePrHistoryResult {
+  deletedRequests: number
+  deletedLines: number
+}
+
+interface DeletePrHistoryRpcRow {
+  deleted_requests: number
+  deleted_lines: number
+}
+
 export interface ActiveDocumentAsset extends PrivateDocumentLocation {
   id: string
   itemFg: string
@@ -327,6 +337,19 @@ export async function searchPrHistory(filters: PrHistoryFilters): Promise<PrHist
     dueDate: row.due_date ?? '',
     comment: row.comment ?? '',
   }))
+}
+
+export async function deletePurchaseRequestHistory(prIds: string[]): Promise<DeletePrHistoryResult> {
+  if (!settingsSupabase) throw new Error('Supabase is not configured')
+  const uniquePrIds = [...new Set(prIds.filter(Boolean))]
+  if (!uniquePrIds.length) return { deletedRequests: 0, deletedLines: 0 }
+  const { data, error } = await settingsSupabase.rpc('delete_purchase_request_history', { p_pr_ids: uniquePrIds })
+  if (error) throw error
+  const row = ((data ?? []) as DeletePrHistoryRpcRow[])[0]
+  return {
+    deletedRequests: Number(row?.deleted_requests ?? 0),
+    deletedLines: Number(row?.deleted_lines ?? 0),
+  }
 }
 
 export async function findActiveDocuments(itemFg: string): Promise<ActiveDocumentAsset[]> {

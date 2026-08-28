@@ -52,11 +52,11 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     const handleLock = () => {
       setSettingsUnlocked(false)
-      navigate('/raw-material-pr', { replace: true })
+      if (location.pathname === '/settings') navigate('/raw-material-pr', { replace: true })
     }
     window.addEventListener('prpd-settings-lock', handleLock)
     return () => window.removeEventListener('prpd-settings-lock', handleLock)
-  }, [navigate])
+  }, [location.pathname, navigate])
 
   useEffect(() => {
     if (location.pathname === '/settings' && !settingsUnlocked && !passwordOpen) setPasswordOpen(true)

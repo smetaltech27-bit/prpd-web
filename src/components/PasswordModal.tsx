@@ -7,9 +7,23 @@ interface PasswordModalProps {
   open: boolean
   onClose: () => void
   onUnlock: (password: string) => Promise<SettingsUnlockResult>
+  eyebrow?: string
+  title?: string
+  description?: string
+  submitLabel?: string
+  danger?: boolean
 }
 
-export function PasswordModal({ open, onClose, onUnlock }: PasswordModalProps) {
+export function PasswordModal({
+  open,
+  onClose,
+  onUnlock,
+  eyebrow = 'Restricted area',
+  title = 'ปลดล็อก Settings',
+  description = 'กรอกรหัสผ่านผู้ดูแลระบบเพื่อจัดการ Master Data และเอกสารการผลิต',
+  submitLabel = 'ปลดล็อก',
+  danger = false,
+}: PasswordModalProps) {
   const [password, setPassword] = useState('')
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState('')
@@ -18,6 +32,7 @@ export function PasswordModal({ open, onClose, onUnlock }: PasswordModalProps) {
   const [cooldownUntil, setCooldownUntil] = useState(0)
   const [clock, setClock] = useState(Date.now())
   const inputRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const cooldownSeconds = Math.max(0, Math.ceil((cooldownUntil - clock) / 1000))
 
   useEffect(() => {
@@ -89,15 +104,15 @@ export function PasswordModal({ open, onClose, onUnlock }: PasswordModalProps) {
     <div className="modal-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal-panel unlock-modal" role="dialog" aria-modal="true" aria-labelledby="unlock-title">
         <header className="modal-header">
-          <div className="modal-icon"><LockKeyhole size={22} /></div>
+          <div className={`modal-icon ${danger ? 'danger' : ''}`}><LockKeyhole size={22} /></div>
           <div>
-            <p className="eyebrow">Restricted area</p>
-            <h2 id="unlock-title">ปลดล็อก Settings</h2>
+            <p className="eyebrow">{eyebrow}</p>
+            <h2 id="unlock-title">{title}</h2>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="ปิด"><X size={20} /></button>
         </header>
-        <form className="modal-body" onSubmit={handleSubmit}>
-          <p className="muted">กรอกรหัสผ่านผู้ดูแลระบบเพื่อจัดการ Master Data และเอกสารการผลิต</p>
+        <form ref={formRef} className="modal-body" onSubmit={handleSubmit}>
+          <p className="muted">{description}</p>
           <label className="field-label" htmlFor="settings-password">Password</label>
           <div className={`password-field ${error ? 'has-error' : ''}`}>
             <KeyRound size={18} />
@@ -121,8 +136,8 @@ export function PasswordModal({ open, onClose, onUnlock }: PasswordModalProps) {
         </form>
         <footer className="modal-footer">
           <button className="button button-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-          <button className="button button-primary" type="button" disabled={submitting || cooldownSeconds > 0} onClick={() => document.querySelector<HTMLFormElement>('.unlock-modal form')?.requestSubmit()}>
-            {submitting ? 'กำลังตรวจสอบ…' : 'ปลดล็อก'}
+          <button className={`button ${danger ? 'button-danger' : 'button-primary'}`} type="button" disabled={submitting || cooldownSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>
+            {submitting ? 'กำลังตรวจสอบ…' : submitLabel}
           </button>
         </footer>
       </section>
