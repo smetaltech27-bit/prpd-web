@@ -234,6 +234,8 @@ h1, h2, h3, p { margin-top: 0; }
 .table-toolbar .search-box { width: min(520px, 100%); margin: 0; }
 .settings-search-form { flex: 1; display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
 .settings-search-form .search-box { flex: 1; }
+.settings-master-toolbar { flex-wrap: nowrap; }
+.settings-add-master { flex: 0 0 auto; white-space: nowrap; }
 .settings-vendor-filter { width: min(250px, 32%); }
 .settings-vendor-filter > span { display: block; margin-bottom: 5px; color: #60758c; font-size: 9px; font-weight: 700; }
 .settings-vendor-filter select { width: 100%; height: 42px; padding: 0 10px; border: 1px solid #cedced; border-radius: 9px; outline: none; color: #233952; background: white; font-size: 11px; }
@@ -258,16 +260,27 @@ h1, h2, h3, p { margin-top: 0; }
 .settings-tabs { max-width: 730px; margin-bottom: 18px; }
 .prototype-badge { padding: 7px 10px; border: 1px solid #b7d9f7; border-radius: 999px; color: #0f72c9; background: #edf8ff; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; align-items: start; gap: 18px; }
+.settings-master-table { min-width: 1380px; }
+.settings-master-table th,
+.settings-master-table td:not(.settings-empty-results),
+.settings-master-table td strong,
+.settings-master-table td span { color: #000; font-weight: 400; }
 .editor-card { position: sticky; top: 18px; }
 .editor-form { padding: 16px 18px 19px; }
 .form-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field { display: block; margin-bottom: 12px; }
 .field input { height: 39px; font-size: 11px; }
 .row-actions { display: flex; gap: 6px; }
-.document-settings-grid { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; gap: 18px; }
-.document-master-list .search-box { margin-bottom: 5px; }
-.document-settings-search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 0 14px 8px; }
+.document-settings-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 18px; }
+.document-master-toolbar { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+.document-master-heading { flex: 0 0 160px; }
+.document-master-heading h2 { margin-bottom: 0; }
+.document-settings-search { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-width: 0; }
 .document-settings-search .search-box { width: 100%; margin: 0; }
+.document-add-item { flex: 0 0 auto; white-space: nowrap; }
+.document-master-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; padding-top: 0; }
+.document-master-results .document-result { border: 1px solid #e1eaf3; border-radius: 9px; }
+.document-master-results .settings-result-message { grid-column: 1 / -1; }
 .settings-result-message { margin: 0; padding: 28px 10px; color: var(--muted); text-align: center; font-size: 11px; line-height: 1.6; }
 .production-item-model { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; font-weight: 500; }
 .upload-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 12px; margin: 0 20px; padding: 17px 0; border-bottom: 1px solid #e7eef6; }
@@ -401,8 +414,10 @@ h1, h2, h3, p { margin-top: 0; }
   .settings-vendor-filter { width: 100%; }
   .document-settings-search { grid-template-columns: 1fr; }
   .document-settings-search .button { width: 100%; }
-  .document-master-list .card-header { align-items: stretch; flex-direction: column; }
-  .document-master-list .card-header .button { width: 100%; }
+  .document-master-toolbar { align-items: stretch; flex-direction: column; }
+  .document-master-heading { flex-basis: auto; }
+  .document-add-item { width: 100%; }
+  .document-master-results { grid-template-columns: 1fr; }
   .production-item-modal { margin-top: 0; }
   .production-item-modal-body { grid-template-columns: 1fr; padding: 18px; }
   .production-field-grid { grid-template-columns: 1fr; }

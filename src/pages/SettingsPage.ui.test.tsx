@@ -47,6 +47,34 @@ describe('Settings document search', () => {
     expect(screen.getByText('กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ')).toBeInTheDocument()
   })
 
+  it('shows separated master-data columns and removes Item FG from equipment', () => {
+    render(<SettingsPage />)
+
+    expect(screen.getByRole('columnheader', { name: 'ITEM FG' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'PART' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'SPEC' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'DWG NO.' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'DIMENSION' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'USAGE' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Factory Supply / Equipment' }))
+    expect(screen.queryByRole('columnheader', { name: 'ITEM FG' })).not.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'PART' })).toBeInTheDocument()
+  })
+
+  it('places the horizontal Item Master bar before Private R2 Documents', () => {
+    const { container } = render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Document Files' }))
+
+    const masterBar = container.querySelector('.document-master-toolbar')
+    const fileManager = container.querySelector('.file-manager')
+    expect(masterBar).toBeInTheDocument()
+    expect(fileManager).toBeInTheDocument()
+    if (!masterBar || !fileManager) throw new Error('Settings document layout is incomplete')
+    expect(masterBar.compareDocumentPosition(fileManager) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(masterBar).toContainElement(screen.getByRole('button', { name: 'เพิ่ม Item ใหม่' }))
+  })
+
   it('creates a new production item only after all three required documents are selected', async () => {
     vi.mocked(createProductionItemWithDocuments).mockResolvedValue({
       id: 'production-new', itemFg: 'TMNEW01', partName: 'NEW PART', drawingNo: 'DWG-001',
