@@ -88,6 +88,7 @@ export interface PrintImageOptions extends PrintOptions {
   itemFg?: string
   label?: string
   marginMm?: number
+  bottomMarginMm?: number
   fit?: 'contain' | 'fill'
 }
 
@@ -98,13 +99,17 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
     title = [label, itemFg].filter(Boolean).join(' · '),
     orientation = 'portrait',
     marginMm = 0,
+    bottomMarginMm,
     fit = 'contain',
   } = options
   const safeMarginMm = Math.min(Math.max(marginMm, 0), 40)
+  const safeBottomMarginMm = bottomMarginMm === undefined
+    ? safeMarginMm
+    : Math.min(Math.max(bottomMarginMm, 0), 40)
   const pageWidthMm = orientation === 'landscape' ? 297 : 210
   const pageHeightMm = orientation === 'landscape' ? 210 : 297
   const imageHostWidthMm = pageWidthMm - (safeMarginMm * 2)
-  const imageHostHeightMm = pageHeightMm - (safeMarginMm * 2)
+  const imageHostHeightMm = pageHeightMm - safeMarginMm - safeBottomMarginMm
   const host = document.createElement('div')
   const style = document.createElement('style')
   const image = document.createElement('img')
@@ -130,18 +135,14 @@ export function printImage(imageUrl: string, options: PrintImageOptions = {}): v
         padding: 0 !important;
         overflow: hidden !important;
       }
-      body {
-        display: grid !important;
-        place-items: center !important;
-      }
       body > *:not(.direct-print-image-host) { display: none !important; }
       body > .direct-print-image-host {
         page: directDocumentPage;
         position: static !important;
         inset: auto !important;
         z-index: auto !important;
-        display: grid !important;
-        place-items: center !important;
+        display: block !important;
+        margin: ${safeMarginMm}mm ${safeMarginMm}mm ${safeBottomMarginMm}mm !important;
         width: ${imageHostWidthMm}mm !important;
         height: ${imageHostHeightMm}mm !important;
         overflow: hidden !important;

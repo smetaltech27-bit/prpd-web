@@ -34,4 +34,22 @@ describe('printImage', () => {
     expect(document.querySelector('.direct-print-image-host')).not.toBeInTheDocument()
     expect(document.querySelector('style[data-direct-print-image]')).not.toBeInTheDocument()
   })
+
+  it('can reserve only the bottom edge without shrinking the top or sides', () => {
+    vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { callback(0); return 1 })
+
+    printImage('blob:inprocess', {
+      orientation: 'portrait',
+      marginMm: 0,
+      bottomMarginMm: 15,
+      fit: 'fill',
+    })
+
+    const style = document.querySelector('style[data-direct-print-image]')
+    expect(style).toHaveTextContent('width: 210mm !important')
+    expect(style).toHaveTextContent('height: 282mm !important')
+    expect(style).toHaveTextContent('margin: 0mm 0mm 15mm !important')
+    expect(style).toHaveTextContent('object-fit: fill !important')
+  })
 })

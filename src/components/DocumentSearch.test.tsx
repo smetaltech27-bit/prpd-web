@@ -77,8 +77,9 @@ describe('DocumentSearch', () => {
     fireEvent.click(screen.getByRole('button', { name: `พิมพ์ ${label}` }))
     expect(printImage).toHaveBeenCalledTimes(1)
     expect(printImage).toHaveBeenLastCalledWith('blob:document-preview', expect.objectContaining({
-      marginMm: kind === 'inprocess' ? 15 : 0,
-      fit: 'contain',
+      marginMm: 0,
+      bottomMarginMm: kind === 'inprocess' ? 15 : 0,
+      fit: kind === 'inprocess' ? 'fill' : 'contain',
     }))
     fireEvent(window, new Event('afterprint'))
 
