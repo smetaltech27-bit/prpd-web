@@ -104,7 +104,7 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
       label: meta.label,
       orientation,
       marginMm: 0,
-      bottomMarginMm: kind === 'inprocess' ? 10 : 0,
+      bottomMarginMm: kind === 'inprocess' ? 8 : 0,
       fit: kind === 'inprocess' ? 'fill' : 'contain',
     })
   }

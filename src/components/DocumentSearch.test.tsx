@@ -78,7 +78,7 @@ describe('DocumentSearch', () => {
     expect(printImage).toHaveBeenCalledTimes(1)
     expect(printImage).toHaveBeenLastCalledWith('blob:document-preview', expect.objectContaining({
       marginMm: 0,
-      bottomMarginMm: kind === 'inprocess' ? 10 : 0,
+      bottomMarginMm: kind === 'inprocess' ? 8 : 0,
       fit: kind === 'inprocess' ? 'fill' : 'contain',
     }))
     fireEvent(window, new Event('afterprint'))

@@ -42,14 +42,14 @@ describe('printImage', () => {
     printImage('blob:inprocess', {
       orientation: 'portrait',
       marginMm: 0,
-      bottomMarginMm: 10,
+      bottomMarginMm: 8,
       fit: 'fill',
     })
 
     const style = document.querySelector('style[data-direct-print-image]')
     expect(style).toHaveTextContent('width: 210mm !important')
-    expect(style).toHaveTextContent('height: 287mm !important')
-    expect(style).toHaveTextContent('margin: 0mm 0mm 10mm !important')
+    expect(style).toHaveTextContent('height: 289mm !important')
+    expect(style).toHaveTextContent('margin: 0mm 0mm 8mm !important')
     expect(style).toHaveTextContent('object-fit: fill !important')
   })
 })
