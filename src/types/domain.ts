@@ -21,6 +21,7 @@ export interface MaterialItem {
   unitPrice: number
   usage: number
   comment?: string
+  isActive?: boolean
 }
 
 export interface DocumentRecord {

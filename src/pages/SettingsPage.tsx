@@ -5,7 +5,7 @@ import { rawMaterials, equipmentItems } from '../app/mockData'
 import { PageHeader } from '../components/AppShell'
 import { lockSettings } from '../services/settingsAccess'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { createProductionItemWithDocuments, deactivateMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, setMasterItemActive, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
 import { fetchPrivateDocument } from '../services/documentStorage'
 import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
 import type { MaterialItem } from '../types/domain'
@@ -40,6 +40,7 @@ export function SettingsPage() {
   const [searching, setSearching] = useState(false)
   const [savedNotice, setSavedNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
   const activeRows = tab === 'raw' ? rows.raw : rows.equipment
 
   function openEditor(item?: MaterialItem) {
@@ -63,6 +64,7 @@ export function SettingsPage() {
     setTab(nextTab)
     setQuery('')
     setVendor('')
+    setShowInactive(false)
     if (nextTab !== 'documents') {
       setRows((current) => ({ ...current, [nextTab]: [] }))
       setSearched((current) => ({ ...current, [nextTab]: false }))
@@ -83,7 +85,7 @@ export function SettingsPage() {
     setSavedNotice('')
     try {
       const source = isSupabaseConfigured
-        ? await (key === 'raw' ? listRawMaterials() : listFactorySupplies())
+        ? await (key === 'raw' ? listRawMaterials(undefined, showInactive) : listFactorySupplies(showInactive))
         : key === 'raw' ? rawMaterials : equipmentItems
       setRows((current) => ({ ...current, [key]: source.filter((item) => matchesMasterSearch(item, query, key === 'equipment' ? vendor : '')) }))
       setSearched((current) => ({ ...current, [key]: true }))
@@ -122,18 +124,25 @@ export function SettingsPage() {
     setSavedNotice(isSupabaseConfigured ? 'บันทึกข้อมูลลง Supabase แล้ว' : 'บันทึกในหน้าจอ Prototype แล้ว — ยังไม่ส่งข้อมูลไป Supabase')
   }
 
-  async function deactivateItem(item: MaterialItem) {
+  async function changeItemActive(item: MaterialItem, isActive: boolean) {
     const key = tab === 'raw' ? 'raw' : 'equipment'
     if (isSupabaseConfigured) {
       try {
-        await deactivateMasterItem(key, item.id)
+        await setMasterItemActive(key, item.id, isActive)
       } catch {
-        setSavedNotice('ปิดใช้งานไม่สำเร็จ กรุณาตรวจสิทธิ์ Settings')
+        setSavedNotice(`${isActive ? 'เปิด' : 'ปิด'}ใช้งานไม่สำเร็จ กรุณาตรวจสิทธิ์ Settings`)
         return
       }
     }
-    setRows((current) => ({ ...current, [key]: current[key].filter((row) => row.id !== item.id) }))
-    setSavedNotice(isSupabaseConfigured ? 'ปิดใช้งานรายการแล้ว โดยประวัติ PR เดิมไม่ถูกลบ' : 'นำรายการออกจาก Prototype แล้ว')
+    setRows((current) => ({
+      ...current,
+      [key]: showInactive
+        ? current[key].map((row) => row.id === item.id ? { ...row, isActive } : row)
+        : current[key].filter((row) => row.id !== item.id),
+    }))
+    setSavedNotice(isSupabaseConfigured
+      ? `${isActive ? 'เปิด' : 'ปิด'}ใช้งานรายการแล้ว โดยประวัติ PR เดิมไม่ถูกลบ`
+      : `${isActive ? 'เปิด' : 'ปิด'}ใช้งานรายการใน Prototype แล้ว`)
   }
 
   async function handleLock() {
@@ -150,13 +159,13 @@ export function SettingsPage() {
     </div>
     {tab !== 'documents' && <div className={`settings-layout ${editorOpen ? 'has-editor' : ''}`}>
       <section className="card master-card">
-        <div className="table-toolbar settings-master-toolbar"><form className={`settings-search-form ${tab === 'equipment' ? 'has-vendor' : ''}`} onSubmit={searchMaster}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Part, Spec หรือ Vendor…" /></label>{tab === 'equipment' && <label className="settings-vendor-filter"><span>Vendor</span><select value={vendor} onChange={(event) => setVendor(event.target.value)}><option value="">ทั้งหมด</option>{vendors.map((name) => <option value={name} key={name}>{name}</option>)}</select></label>}<button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button></form><button className="button button-primary settings-add-master" onClick={() => openEditor()}><Plus size={17} /> Add {tab === 'raw' ? 'Raw Material' : 'Equipment'}</button></div>
+        <div className="table-toolbar settings-master-toolbar"><form className={`settings-search-form ${tab === 'equipment' ? 'has-vendor' : ''}`} onSubmit={searchMaster}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Part, Spec หรือ Vendor…" /></label>{tab === 'equipment' && <label className="settings-vendor-filter"><span>Vendor</span><select value={vendor} onChange={(event) => setVendor(event.target.value)}><option value="">ทั้งหมด</option>{vendors.map((name) => <option value={name} key={name}>{name}</option>)}</select></label>}<button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button></form><label className="settings-inactive-toggle"><input type="checkbox" checked={showInactive} onChange={(event) => { setShowInactive(event.target.checked); setRows((current) => ({ ...current, [tab]: [] })); setSearched((current) => ({ ...current, [tab]: false })) }} />แสดงรายการที่ปิดใช้งาน</label><button className="button button-primary settings-add-master" onClick={() => openEditor()}><Plus size={17} /> Add {tab === 'raw' ? 'Raw Material' : 'Equipment'}</button></div>
         {savedNotice && <div className="inline-notice"><Save size={17} />{savedNotice}</div>}
         <div className="table-wrap"><table className="data-table settings-master-table"><thead><tr>
-          {tab === 'raw' && <th>ITEM FG</th>}<th>PART</th><th>SPEC</th><th>DWG NO.</th><th>VENDOR</th><th>TYPE</th><th>DIMENSION</th><th>PRICE</th><th>USAGE</th><th />
+          {tab === 'raw' && <th>ITEM FG</th>}<th>PART</th><th>SPEC</th><th>DWG NO.</th><th>VENDOR</th><th>TYPE</th><th>DIMENSION</th><th>PRICE</th><th>USAGE</th><th>COMMENT</th><th>สถานะ</th><th />
         </tr></thead><tbody>{activeRows.map((item) => <tr key={item.id}>
-          {tab === 'raw' && <td>{item.itemFg || '—'}</td>}<td>{item.partName || '—'}</td><td>{item.spec || '—'}</td><td>{item.drawingNo || '—'}</td><td>{item.vendor || '—'}</td><td>{item.materialType || '—'}</td><td>{item.dimension || '—'}</td><td>฿{item.unitPrice.toLocaleString()}</td><td>{item.usage}</td><td><div className="row-actions"><button className="icon-button" onClick={() => openEditor(item)} title="แก้ไข"><Pencil size={16} /></button><button className="icon-button" onClick={() => void deactivateItem(item)} title="ปิดใช้งาน"><Archive size={16} /></button></div></td>
-        </tr>)}{!activeRows.length && <tr><td colSpan={tab === 'raw' ? 10 : 9} className="settings-empty-results">{searched[tab] ? 'ไม่พบรายการที่ตรงกับเงื่อนไขค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</td></tr>}</tbody></table></div>
+          {tab === 'raw' && <td>{item.itemFg || '—'}</td>}<td>{item.partName || '—'}</td><td>{item.spec || '—'}</td><td>{item.drawingNo || '—'}</td><td>{item.vendor || '—'}</td><td>{item.materialType || '—'}</td><td>{item.dimension || '—'}</td><td>฿{item.unitPrice.toLocaleString()}</td><td>{item.usage}</td><td>{item.comment || '—'}</td><td><span className={`master-status ${item.isActive === false ? 'inactive' : 'active'}`}>{item.isActive === false ? 'ปิดใช้งาน' : 'ใช้งานอยู่'}</span></td><td><div className="row-actions"><button className="icon-button" onClick={() => openEditor(item)} title="แก้ไข"><Pencil size={16} /></button><button className={`icon-button ${item.isActive === false ? 'reactivate' : ''}`} onClick={() => void changeItemActive(item, item.isActive === false)} title={item.isActive === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}>{item.isActive === false ? <CheckCircle2 size={16} /> : <Archive size={16} />}</button></div></td>
+        </tr>)}{!activeRows.length && <tr><td colSpan={tab === 'raw' ? 12 : 11} className="settings-empty-results">{searched[tab] ? 'ไม่พบรายการที่ตรงกับเงื่อนไขค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</td></tr>}</tbody></table></div>
       </section>
       {editorOpen && <aside className="card editor-card">
         <div className="card-header"><div><p className="eyebrow">{activeRows.some((item) => item.id === form.id) ? 'EDIT RECORD' : 'NEW RECORD'}</p><h2>รายละเอียดรายการ</h2></div><button className="icon-button" onClick={() => setEditorOpen(false)}><X size={18} /></button></div>

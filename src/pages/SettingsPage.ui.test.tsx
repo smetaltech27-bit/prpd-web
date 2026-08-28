@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createProductionItemWithDocuments } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, setMasterItemActive } from '../services/prpdRepository'
 import { SettingsPage } from './SettingsPage'
 
 vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: true }))
@@ -10,7 +10,11 @@ vi.mock('../services/prpdRepository', () => ({
   deactivateMasterItem: vi.fn(),
   findActiveDocuments: vi.fn(async () => []),
   listFactorySupplies: vi.fn(async () => []),
-  listRawMaterials: vi.fn(async () => []),
+  listRawMaterials: vi.fn(async (_itemFg?: string, includeInactive = false) => includeInactive ? [{
+    id: 'raw-inactive', itemFg: 'TM-INACTIVE', partName: 'INACTIVE PART', drawingNo: 'DWG-I',
+    spec: 'SPEC-I', orderCode: 'RM-I', vendor: 'VENDOR I', materialType: 'STEEL', dimension: '10x20',
+    unitPrice: 100, usage: 2, comment: 'เก็บไว้ใช้ภายหลัง', isActive: false,
+  }] : []),
   listVendorNames: vi.fn(async () => []),
   searchProductionItems: vi.fn(async (query: string) => query === 'TM4207A' ? [{
     id: 'production-1', itemFg: 'TM4207A', partName: 'ARM A', drawingNo: 'MT524685A',
@@ -18,6 +22,7 @@ vi.mock('../services/prpdRepository', () => ({
   }] : []),
   createProductionItemWithDocuments: vi.fn(),
   saveMasterItem: vi.fn(async () => 'saved-id'),
+  setMasterItemActive: vi.fn(),
   uploadDocumentAsset: vi.fn(),
 }))
 
@@ -78,6 +83,21 @@ describe('Settings document search', () => {
     if (!masterBar || !fileManager) throw new Error('Settings document layout is incomplete')
     expect(masterBar.compareDocumentPosition(fileManager) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(masterBar).toContainElement(screen.getByRole('button', { name: 'เพิ่ม Item ใหม่' }))
+  })
+
+  it('shows comments and reactivates an inactive master item', async () => {
+    render(<SettingsPage />)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'แสดงรายการที่ปิดใช้งาน' }))
+    fireEvent.change(screen.getByPlaceholderText('ค้นหา Item FG, Part, Spec หรือ Vendor…'), { target: { value: 'TM-INACTIVE' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+
+    expect(await screen.findByText('เก็บไว้ใช้ภายหลัง')).toBeInTheDocument()
+    expect(screen.getByText('ปิดใช้งาน')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('เปิดใช้งาน'))
+
+    await waitFor(() => expect(setMasterItemActive).toHaveBeenCalledWith('raw', 'raw-inactive', true))
+    expect(screen.getByText('ใช้งานอยู่')).toBeInTheDocument()
   })
 
   it('creates a new production item only after all three required documents are selected', async () => {

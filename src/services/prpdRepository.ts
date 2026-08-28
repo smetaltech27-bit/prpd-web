@@ -21,6 +21,7 @@ interface MasterRow {
   unit_price: number | null
   usage_qty: number | null
   comment: string | null
+  is_active: boolean
   vendors: { name: string } | Array<{ name: string }> | null
 }
 
@@ -193,29 +194,31 @@ function mapMasterRow(row: MasterRow): MaterialItem {
     unitPrice: Number(row.unit_price ?? 0),
     usage: Number(row.usage_qty ?? 1),
     comment: row.comment ?? '',
+    isActive: row.is_active,
   }
 }
 
-async function listMaster(table: MasterTable, itemFg?: string): Promise<MaterialItem[]> {
-  if (!supabase) return []
+async function listMaster(table: MasterTable, itemFg?: string, includeInactive = false): Promise<MaterialItem[]> {
+  const client = includeInactive ? settingsSupabase : supabase
+  if (!client) return []
   const typeColumn = table === 'raw_materials' ? 'material_type' : 'supply_type'
-  let query = supabase
+  let query = client
     .from(table)
-    .select(`id,name_part,spec,dwg_no,item_fg,code_order_rm,${typeColumn},dimension,unit_price,usage_qty,comment,vendors(name)`)
-    .eq('is_active', true)
+    .select(`id,name_part,spec,dwg_no,item_fg,code_order_rm,${typeColumn},dimension,unit_price,usage_qty,comment,is_active,vendors(name)`)
     .order('name_part')
+  if (!includeInactive) query = query.eq('is_active', true)
   if (itemFg?.trim()) query = query.ilike('item_fg', itemFg.trim())
   const { data, error } = await query
   if (error) throw error
   return ((data ?? []) as unknown as MasterRow[]).map(mapMasterRow)
 }
 
-export function listRawMaterials(itemFg?: string): Promise<MaterialItem[]> {
-  return listMaster('raw_materials', itemFg)
+export function listRawMaterials(itemFg?: string, includeInactive = false): Promise<MaterialItem[]> {
+  return listMaster('raw_materials', itemFg, includeInactive)
 }
 
-export function listFactorySupplies(): Promise<MaterialItem[]> {
-  return listMaster('factory_supplies')
+export function listFactorySupplies(includeInactive = false): Promise<MaterialItem[]> {
+  return listMaster('factory_supplies', undefined, includeInactive)
 }
 
 export async function listVendorNames(): Promise<string[]> {
@@ -438,9 +441,13 @@ export async function saveMasterItem(kind: 'raw' | 'equipment', item: MaterialIt
 }
 
 export async function deactivateMasterItem(kind: 'raw' | 'equipment', id: string): Promise<void> {
+  return setMasterItemActive(kind, id, false)
+}
+
+export async function setMasterItemActive(kind: 'raw' | 'equipment', id: string, isActive: boolean): Promise<void> {
   if (!settingsSupabase) throw new Error('Settings access is not configured')
   const table = (kind === 'raw' ? 'raw_materials' : 'factory_supplies') as string
-  const { error } = await settingsSupabase.from(table).update({ is_active: false }).eq('id', id)
+  const { error } = await settingsSupabase.from(table).update({ is_active: isActive }).eq('id', id)
   if (error) throw error
 }
 
