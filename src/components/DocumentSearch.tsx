@@ -24,6 +24,7 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState('')
   const [orientation, setOrientation] = useState<PrintOrientation>('portrait')
+  const [printConfirmation, setPrintConfirmation] = useState(false)
   const [printSuccess, setPrintSuccess] = useState(false)
   const previewFrameRef = useRef<HTMLIFrameElement>(null)
   const pendingAfterPrintRef = useRef<{ target: Window; handler: () => void } | null>(null)
@@ -100,7 +101,7 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
     if (pending) pending.target.removeEventListener('afterprint', pending.handler)
     const handler = () => {
       pendingAfterPrintRef.current = null
-      setPrintSuccess(true)
+      setPrintConfirmation(true)
     }
     pendingAfterPrintRef.current = { target, handler }
     target.addEventListener('afterprint', handler, { once: true })
@@ -109,6 +110,11 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
   function startNewDocumentSearch() {
     setPrintSuccess(false)
     clearSearch()
+  }
+
+  function confirmPrinted() {
+    setPrintConfirmation(false)
+    setPrintSuccess(true)
   }
 
   function printSelected() {
@@ -129,8 +135,8 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
       itemFg: selected.itemFg,
       label: meta.label,
       orientation,
-      marginMm: 0,
-      fit: kind === 'inprocess' ? 'fill' : 'contain',
+      marginMm: 5,
+      fit: 'contain',
     })
   }
 
@@ -163,6 +169,13 @@ export function DocumentSearch({ kind }: { kind: DocumentKind }) {
             <button className="button button-primary" onClick={printSelected}><Printer size={16} /> พิมพ์ {meta.label}</button>
           </>}
       </section>
+      {printConfirmation && createPortal(<div className="modal-overlay print-confirm-overlay" role="presentation">
+        <section className="modal-panel print-confirm-panel" role="dialog" aria-modal="true" aria-labelledby={`${kind}-print-confirm-title`}>
+          <header className="modal-header"><span className="modal-icon"><Printer size={23} /></span><div><p className="eyebrow">PRINT CONFIRMATION</p><h2 id={`${kind}-print-confirm-title`}>พิมพ์เอกสารแล้วหรือไม่?</h2></div></header>
+          <div className="modal-body"><p className="print-success-message">โปรดยืนยันผลหลังปิดหน้าต่างพิมพ์ เพื่อให้ระบบแสดงสถานะได้ถูกต้อง</p></div>
+          <footer className="modal-footer"><button className="button button-secondary" type="button" onClick={() => setPrintConfirmation(false)}>ไม่ได้พิมพ์</button><button className="button button-primary" type="button" onClick={confirmPrinted}>ยืนยันพิมพ์</button></footer>
+        </section>
+      </div>, document.body)}
       {printSuccess && createPortal(<div className="modal-overlay print-success-overlay" role="presentation">
         <section className="modal-panel print-success-panel" role="dialog" aria-modal="true" aria-labelledby={`${kind}-print-success-title`}>
           <header className="modal-header"><span className="modal-icon success"><CheckCircle2 size={24} /></span><div><p className="eyebrow">PRINT COMPLETE</p><h2 id={`${kind}-print-success-title`}>พิมพ์สำเร็จ</h2></div></header>
