@@ -425,12 +425,12 @@ function RawMaterialTable({ lines, minimumDueDate, updateLine, removeLine }: {
   updateLine: (lineId: string, patch: Partial<PrLineItem>) => void
   removeLine: (lineId: string) => void
 }) {
-  return <div className="table-wrap legacy-flow-table"><table className="data-table editable-table"><thead><tr><th>No.</th><th>Vendor</th><th>Item FG</th><th>Code RM</th><th>Name Part</th><th>Type</th><th>Spec</th><th>จำนวนผลิต</th><th>Q’ty</th><th>Price</th><th>Due Date</th><th>Comment</th><th>จัดการ</th></tr></thead><tbody>
+  return <div className="table-wrap legacy-flow-table"><table className="data-table editable-table raw-material-table"><thead><tr><th>No.</th><th>Vendor</th><th>Item FG</th><th>Code RM</th><th>Name Part</th><th>Type</th><th>Spec</th><th>จำนวนผลิต</th><th>Q’ty</th><th>Price</th><th>Due Date</th><th>Comment</th><th>จัดการ</th></tr></thead><tbody>
     {!lines.length && <tr><td colSpan={13}><EmptyState title="ยังไม่มีรายการ" description="กรอก Item FG แล้วกดดึงข้อมูล ระบบจะแสดง Raw Material ทุก Vendor" /></td></tr>}
     {lines.map((line, index) => <tr key={line.lineId}>
       <td>{index + 1}</td>
       <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.vendor || '-'}</span></td>
-      <td><strong>{line.itemFg}</strong></td><td>{line.codeOrder || '-'}</td>
+      <td><span className="item-fg-value">{line.itemFg}</span></td><td>{line.codeOrder || '-'}</td>
       <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.namePart || '-'}</span></td>
       <td>{line.materialType || '-'}</td>
       <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.spec || '-'}</span></td>
