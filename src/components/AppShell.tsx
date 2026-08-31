@@ -12,8 +12,8 @@ import { PasswordModal } from './PasswordModal'
 interface AppShellProps { children: ReactNode }
 
 const mainMenu = [
-  { path: '/raw-material-pr', label: 'ออก PR วัตถุดิบ', english: 'Raw Material PR', icon: PackageSearch },
-  { path: '/equipment-pr', label: 'ออก PR วัสดุอุปกรณ์', english: 'Equipment PR', icon: Boxes },
+  { path: '/raw-material-pr', label: 'ออกใบสั่งขอซื้อวัตถุดิบ', english: 'Raw Material PR', icon: PackageSearch },
+  { path: '/equipment-pr', label: 'ออกใบขอซื้อวัสดุอุปกรณ์', english: 'Equipment PR', icon: Boxes },
   { path: '/work-order', label: 'ใบสั่งงาน', english: 'Work Order', icon: Wrench },
 ]
 
