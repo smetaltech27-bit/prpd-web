@@ -51,10 +51,12 @@ Frontend ไม่ถือ R2 credential และไม่อ่าน Bucket 
 
 รายละเอียด Mapping, Auth/RLS, Storage และการนำเข้าข้อมูลอยู่ที่ [`docs/data-migration.md`](docs/data-migration.md)
 
+ภาพรวม Architecture, Business rules, การแก้ไขล่าสุด, Known risks และ Checklist สำหรับส่งต่องานอยู่ที่ [`docs/project-handoff.md`](docs/project-handoff.md)
+
 ข้อมูลจาก Excel และ Manifest ที่สร้างใน `supabase/seed/generated/` ถูก Ignore เพราะมีชื่อ Vendor ราคา ประวัติการซื้อ และ Local file paths ห้าม Commit ไป Public repository
 
 ## GitHub Pages
 
 Workflow อยู่ที่ `.github/workflows/deploy-pages.yml` และอ่านค่าการเชื่อมต่อผ่าน GitHub Actions Variables เท่านั้น Frontend ใช้ Hash Router เพื่อรองรับการ Refresh บน GitHub Pages
 
-ก่อนเปิด Production ต้องเปิด Anonymous Sign-in หรือกำหนด Employee Login ตามนโยบายองค์กร, Apply RLS, Deploy Private Document Worker, สร้าง Settings Admin และตรวจเอกสาร 154 Item FG ที่ไม่พบใน Raw Material master เอกสารกลุ่มนี้เก็บใน R2 ได้ครบ แต่จะไม่แสดงในหน้าค้นหาจนกว่า Item FG จะมีอยู่และ Active ใน Raw Material master
+ก่อนเปิด Production ต้องเปิด Anonymous Sign-in หรือกำหนด Employee Login ตามนโยบายองค์กร, Apply RLS, Deploy Private Document Worker และสร้าง Settings Admin ส่วนเอกสาร Legacy 154 Item FG ที่ไม่พบใน Raw Material master เป็น Baseline จากการย้ายข้อมูลเดิม ปัจจุบันสามารถทำให้ค้นหาและออก Work Order ได้โดยเพิ่ม Item FG นั้นเป็น Active `Production Item Master` จากหน้า Settings โดยไม่จำเป็นต้องสร้าง Raw Material master ที่ไม่เกี่ยวข้อง
