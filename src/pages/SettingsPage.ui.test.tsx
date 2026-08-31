@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createProductionItemWithDocuments, setMasterItemActive } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, setMasterItemActive } from '../services/prpdRepository'
 import { SettingsPage } from './SettingsPage'
 
 vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: true }))
@@ -8,17 +8,23 @@ vi.mock('../services/settingsAccess', () => ({ lockSettings: vi.fn() }))
 vi.mock('../services/documentStorage', () => ({ fetchPrivateDocument: vi.fn() }))
 vi.mock('../services/prpdRepository', () => ({
   deactivateMasterItem: vi.fn(),
+  deleteDocumentItem: vi.fn(async () => ({ deletedItem: 1, deletedAssets: 3, deletedFiles: 3, failedFiles: 0 })),
+  deleteMasterItem: vi.fn(),
   findActiveDocuments: vi.fn(async () => []),
   listFactorySupplies: vi.fn(async () => []),
   listRawMaterials: vi.fn(async (_itemFg?: string, includeInactive = false) => includeInactive ? [{
     id: 'raw-inactive', itemFg: 'TM-INACTIVE', partName: 'INACTIVE PART', drawingNo: 'DWG-I',
     spec: 'SPEC-I', orderCode: 'RM-I', vendor: 'VENDOR I', materialType: 'STEEL', dimension: '10x20',
     unitPrice: 100, usage: 2, comment: 'เก็บไว้ใช้ภายหลัง', isActive: false,
-  }] : []),
+  }] : [{
+    id: 'raw-delete', itemFg: 'TM-DELETE', partName: 'DELETE PART', drawingNo: 'DWG-D',
+    spec: 'SPEC-D', orderCode: 'RM-D', vendor: 'VENDOR D', materialType: 'STEEL', dimension: '10x20',
+    unitPrice: 100, usage: 2, comment: '', isActive: true,
+  }]),
   listVendorNames: vi.fn(async () => []),
   searchProductionItems: vi.fn(async (query: string) => query === 'TM4207A' ? [{
     id: 'production-1', itemFg: 'TM4207A', partName: 'ARM A', drawingNo: 'MT524685A',
-    spec: 'AL400', orderCode: '', vendor: '', materialType: '', dimension: '', unitPrice: 0, usage: 1,
+    spec: 'AL400', orderCode: '', vendor: '', materialType: '', dimension: '', unitPrice: 0, usage: 1, source: 'production' as const,
   }] : []),
   createProductionItemWithDocuments: vi.fn(),
   saveMasterItem: vi.fn(async () => 'saved-id'),
@@ -98,6 +104,38 @@ describe('Settings document search', () => {
 
     await waitFor(() => expect(setMasterItemActive).toHaveBeenCalledWith('raw', 'raw-inactive', true))
     expect(screen.getByText('ใช้งานอยู่')).toBeInTheDocument()
+  })
+
+  it('requires confirmation before permanently deleting a master item', async () => {
+    render(<SettingsPage />)
+    fireEvent.change(screen.getByPlaceholderText('ค้นหา Item FG, Part, Spec หรือ Vendor…'), { target: { value: 'TM-DELETE' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'ลบ TM-DELETE' }))
+    expect(screen.getByRole('alertdialog', { name: 'ลบ Raw Material หรือไม่?' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'ลบถาวร' }))
+
+    await waitFor(() => expect(deleteMasterItem).toHaveBeenCalledWith('raw', 'raw-delete'))
+    expect(screen.queryByText('TM-DELETE')).not.toBeInTheDocument()
+  })
+
+  it('requires the exact Item FG before deleting a production item and its documents', async () => {
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Document Files' }))
+    const searchInput = screen.getByPlaceholderText('ค้นหา Item FG, Name Part หรือ DWG No.…')
+    fireEvent.change(searchInput, { target: { value: 'TM4207A' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+    await screen.findByText('TM4207A — ARM A')
+
+    fireEvent.click(screen.getByRole('button', { name: 'ลบ Item ที่เลือก' }))
+    const deleteButton = screen.getByRole('button', { name: 'ลบถาวร' })
+    expect(deleteButton).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('พิมพ์ TM4207A เพื่อยืนยัน'), { target: { value: 'TM4207A' } })
+    expect(deleteButton).toBeEnabled()
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => expect(deleteDocumentItem).toHaveBeenCalledWith('production', 'production-1', 'TM4207A'))
+    expect(await screen.findByText('ไม่พบ Item FG')).toBeInTheDocument()
   })
 
   it('creates a new production item only after all three required documents are selected', async () => {

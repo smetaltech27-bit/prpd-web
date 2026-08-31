@@ -22,6 +22,7 @@ export interface MaterialItem {
   usage: number
   comment?: string
   isActive?: boolean
+  source?: 'production' | 'raw_material'
 }
 
 export interface DocumentRecord {

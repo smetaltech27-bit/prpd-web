@@ -19,7 +19,7 @@ export function parseAllowedOrigins(value) {
 export function corsHeaders(origin, allowedOrigins) {
   const headers = new Headers({
     'access-control-allow-headers': 'authorization, content-type, x-original-filename',
-    'access-control-allow-methods': 'GET, HEAD, PUT, OPTIONS',
+    'access-control-allow-methods': 'GET, HEAD, PUT, DELETE, OPTIONS',
     'access-control-max-age': '86400',
     vary: 'Origin',
   })
@@ -224,6 +224,14 @@ async function writeObject(request, env, key, token) {
   return json({ key }, { status: 201 })
 }
 
+export async function deleteObject(env, key, token) {
+  if (!(await isSettingsAdmin(token, env))) return json({ error: 'Settings administrator required' }, { status: 403 })
+  const allowedKey = /^(drawing|inprocess|qc)\/[a-z0-9._-]+\/(?:revisions\/[a-f0-9-]+|v[0-9]{3}\/[a-z0-9._-]+)\.(jpg|jpeg|png|webp|pdf)$/
+  if (!allowedKey.test(key)) return json({ error: 'Invalid immutable document path' }, { status: 400 })
+  await env.DOCUMENTS.delete(key)
+  return new Response(null, { status: 204 })
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -236,7 +244,7 @@ export default {
     }
 
     const key = objectKeyFromPath(url.pathname)
-    if (!key || !['GET', 'HEAD', 'PUT'].includes(request.method)) {
+    if (!key || !['GET', 'HEAD', 'PUT', 'DELETE'].includes(request.method)) {
       return withCors(json({ error: 'Not found' }, { status: 404 }), origin, allowedOrigins)
     }
     const token = bearerToken(request)
@@ -244,14 +252,16 @@ export default {
       return withCors(json({ error: 'Valid Supabase session required' }, { status: 401 }), origin, allowedOrigins)
     }
 
-    if (request.method !== 'PUT' && !(await canReadDocument(token, env, key))) {
+    if ((request.method === 'GET' || request.method === 'HEAD') && !(await canReadDocument(token, env, key))) {
       return withCors(json({ error: 'Document not found' }, { status: 404 }), origin, allowedOrigins)
     }
 
     try {
       const response = request.method === 'PUT'
         ? await writeObject(request, env, key, token)
-        : await readObject(request, env, key)
+        : request.method === 'DELETE'
+          ? await deleteObject(env, key, token)
+          : await readObject(request, env, key)
       return withCors(response, origin, allowedOrigins)
     } catch (error) {
       console.error(JSON.stringify({ event: 'document_gateway_error', method: request.method, key, message: error instanceof Error ? error.message : String(error) }))

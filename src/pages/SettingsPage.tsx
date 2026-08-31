@@ -1,11 +1,12 @@
-import { Archive, CheckCircle2, FileCheck2, FileImage, FileUp, LoaderCircle, LockKeyhole, Pencil, Plus, Save, Search, X } from 'lucide-react'
+import { Archive, CheckCircle2, FileCheck2, FileImage, FileUp, LoaderCircle, LockKeyhole, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { rawMaterials, equipmentItems } from '../app/mockData'
 import { PageHeader } from '../components/AppShell'
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal'
 import { lockSettings } from '../services/settingsAccess'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { createProductionItemWithDocuments, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, setMasterItemActive, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, setMasterItemActive, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
 import { fetchPrivateDocument } from '../services/documentStorage'
 import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
 import type { MaterialItem } from '../types/domain'
@@ -41,6 +42,7 @@ export function SettingsPage() {
   const [savedNotice, setSavedNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<MaterialItem | null>(null)
   const activeRows = tab === 'raw' ? rows.raw : rows.equipment
 
   function openEditor(item?: MaterialItem) {
@@ -145,6 +147,16 @@ export function SettingsPage() {
       : `${isActive ? 'เปิด' : 'ปิด'}ใช้งานรายการใน Prototype แล้ว`)
   }
 
+  async function confirmDeleteMasterItem() {
+    if (!deleteTarget || tab === 'documents') return
+    if (!isSupabaseConfigured) throw new Error('ระบบ Prototype ไม่สามารถลบข้อมูลจากฐานข้อมูลได้')
+    const key = tab === 'raw' ? 'raw' : 'equipment'
+    await deleteMasterItem(key, deleteTarget.id)
+    setRows((current) => ({ ...current, [key]: current[key].filter((row) => row.id !== deleteTarget.id) }))
+    if (form.id === deleteTarget.id) setEditorOpen(false)
+    setSavedNotice(`ลบ ${key === 'raw' ? 'Raw Material' : 'Equipment'} ออกจากฐานข้อมูลแล้ว`)
+  }
+
   async function handleLock() {
     await lockSettings()
     window.dispatchEvent(new Event('prpd-settings-lock'))
@@ -164,7 +176,7 @@ export function SettingsPage() {
         <div className="table-wrap"><table className="data-table settings-master-table"><thead><tr>
           {tab === 'raw' && <th>ITEM FG</th>}<th>PART</th><th>SPEC</th><th>DWG NO.</th><th>VENDOR</th><th>TYPE</th><th>DIMENSION</th><th>PRICE</th><th>USAGE</th><th>COMMENT</th><th>สถานะ</th><th />
         </tr></thead><tbody>{activeRows.map((item) => <tr key={item.id}>
-          {tab === 'raw' && <td>{item.itemFg || '—'}</td>}<td>{item.partName || '—'}</td><td>{item.spec || '—'}</td><td>{item.drawingNo || '—'}</td><td>{item.vendor || '—'}</td><td>{item.materialType || '—'}</td><td>{item.dimension || '—'}</td><td>฿{item.unitPrice.toLocaleString()}</td><td>{item.usage}</td><td>{item.comment || '—'}</td><td><span className={`master-status ${item.isActive === false ? 'inactive' : 'active'}`}>{item.isActive === false ? 'ปิดใช้งาน' : 'ใช้งานอยู่'}</span></td><td><div className="row-actions"><button className="icon-button" onClick={() => openEditor(item)} title="แก้ไข"><Pencil size={16} /></button><button className={`icon-button ${item.isActive === false ? 'reactivate' : ''}`} onClick={() => void changeItemActive(item, item.isActive === false)} title={item.isActive === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}>{item.isActive === false ? <CheckCircle2 size={16} /> : <Archive size={16} />}</button></div></td>
+          {tab === 'raw' && <td>{item.itemFg || '—'}</td>}<td>{item.partName || '—'}</td><td>{item.spec || '—'}</td><td>{item.drawingNo || '—'}</td><td>{item.vendor || '—'}</td><td>{item.materialType || '—'}</td><td>{item.dimension || '—'}</td><td>฿{item.unitPrice.toLocaleString()}</td><td>{item.usage}</td><td>{item.comment || '—'}</td><td><span className={`master-status ${item.isActive === false ? 'inactive' : 'active'}`}>{item.isActive === false ? 'ปิดใช้งาน' : 'ใช้งานอยู่'}</span></td><td><div className="row-actions"><button className="icon-button" onClick={() => openEditor(item)} title="แก้ไข"><Pencil size={16} /></button><button className={`icon-button ${item.isActive === false ? 'reactivate' : ''}`} onClick={() => void changeItemActive(item, item.isActive === false)} title={item.isActive === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}>{item.isActive === false ? <CheckCircle2 size={16} /> : <Archive size={16} />}</button><button className="icon-button danger" onClick={() => setDeleteTarget(item)} title="ลบออกจากฐานข้อมูล" aria-label={`ลบ ${item.itemFg || item.partName}`}><Trash2 size={16} /></button></div></td>
         </tr>)}{!activeRows.length && <tr><td colSpan={tab === 'raw' ? 12 : 11} className="settings-empty-results">{searched[tab] ? 'ไม่พบรายการที่ตรงกับเงื่อนไขค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</td></tr>}</tbody></table></div>
       </section>
       {editorOpen && <aside className="card editor-card">
@@ -181,6 +193,14 @@ export function SettingsPage() {
       </aside>}
     </div>}
     {tab === 'documents' && <DocumentManager />}
+    <DeleteConfirmModal
+      open={Boolean(deleteTarget)}
+      onClose={() => setDeleteTarget(null)}
+      onConfirm={confirmDeleteMasterItem}
+      title={`ลบ ${tab === 'raw' ? 'Raw Material' : 'Equipment'} หรือไม่?`}
+      description="ระบบจะลบรายการนี้ออกจากฐานข้อมูลถาวร หากมีประวัติ PR อ้างอิงอยู่ ระบบจะปฏิเสธการลบและให้ใช้การปิดใช้งานแทน"
+      resourceName={deleteTarget ? `${deleteTarget.itemFg || deleteTarget.partName} — ${deleteTarget.partName}` : ''}
+    />
   </div>
 }
 
@@ -205,6 +225,7 @@ function DocumentManager() {
   const [uploadStatuses, setUploadStatuses] = useState<Partial<Record<DocumentAssetType, DocumentUploadStatus>>>({})
   const [creatingItem, setCreatingItem] = useState(false)
   const [newItemError, setNewItemError] = useState('')
+  const [deleteItemOpen, setDeleteItemOpen] = useState(false)
 
   async function searchItems(event: FormEvent) {
     event.preventDefault()
@@ -340,10 +361,31 @@ function DocumentManager() {
       setNotice(`${label}: อัปโหลดไม่สำเร็จ — ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
+
+  async function confirmDeleteDocumentItem() {
+    if (!selected) return
+    if (!isSupabaseConfigured) throw new Error('ระบบ Prototype ไม่สามารถลบข้อมูลจากฐานข้อมูลได้')
+    const source = selected.source
+    if (!source) throw new Error('ไม่สามารถระบุแหล่งข้อมูลของ Item นี้ได้ กรุณาค้นหาใหม่อีกครั้ง')
+    const target = selected
+    const result = await deleteDocumentItem(source, target.id, target.itemFg)
+    setPreviewAsset(null)
+    setPreviewUrl('')
+    setAssets([])
+    if (source === 'production') {
+      setItems((current) => current.filter((item) => item.id !== target.id))
+      setSelected(null)
+    }
+    setNotice(result.failedFiles
+      ? `ลบข้อมูล ${target.itemFg} จาก Supabase แล้ว แต่มีไฟล์ต้นฉบับ ${result.failedFiles} ไฟล์ที่ลบไม่สำเร็จ กรุณาตรวจ Cloudflare R2`
+      : source === 'production'
+        ? `ลบ Item ${target.itemFg}, Metadata ${result.deletedAssets} รายการ และไฟล์ต้นฉบับ ${result.deletedFiles} ไฟล์แล้ว`
+        : `ลบเอกสารของ ${target.itemFg} จำนวน ${result.deletedAssets} รายการแล้ว โดย Raw Material Master ยังคงอยู่`)
+  }
   const assetByType = new Map(assets.map((asset) => [asset.type, asset]))
   return <>
     <div className="document-settings-grid">
-    <section className="card document-master-list"><div className="document-master-toolbar"><div className="document-master-heading"><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div><form className="document-settings-search" onSubmit={searchItems}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Name Part หรือ DWG No.…" /></label><button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button><button className="button button-secondary" type="button" onClick={clearDocumentSearch} disabled={!query && !items.length && !selected && !notice}><X size={17} />ล้างข้อมูล</button></form><button className="button button-primary document-add-item" onClick={() => setNewItemOpen(true)}><Plus size={17} />เพิ่ม Item ใหม่</button></div><div className="result-list document-master-results">{items.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}{!items.length && <p className="settings-result-message">{searched ? 'ไม่พบ Item FG ที่ตรงกับคำค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</p>}</div></section>
+    <section className="card document-master-list"><div className="document-master-toolbar"><div className="document-master-heading"><p className="eyebrow">ITEM MASTER</p><h2>เลือก Item FG</h2></div><form className="document-settings-search" onSubmit={searchItems}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา Item FG, Name Part หรือ DWG No.…" /></label><button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button><button className="button button-secondary" type="button" onClick={clearDocumentSearch} disabled={!query && !items.length && !selected && !notice}><X size={17} />ล้างข้อมูล</button></form><button className="button button-danger document-delete-item" type="button" onClick={() => setDeleteItemOpen(true)} disabled={!selected}><Trash2 size={17} />ลบ Item ที่เลือก</button><button className="button button-primary document-add-item" onClick={() => setNewItemOpen(true)}><Plus size={17} />เพิ่ม Item ใหม่</button></div><div className="result-list document-master-results">{items.map((item) => <button className={`document-result ${selected?.id === item.id ? 'selected' : ''}`} onClick={() => setSelected(item)} key={item.id}><span className="availability found"><FileImage /></span><span><strong>{item.itemFg}</strong><small>{item.partName} • {item.drawingNo}</small></span></button>)}{!items.length && <p className="settings-result-message">{searched ? 'ไม่พบ Item FG ที่ตรงกับคำค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</p>}</div></section>
     <section className="card file-manager"><div className="card-header"><div><p className="eyebrow">PRIVATE R2 DOCUMENTS</p><h2>{selected ? `${selected.itemFg} — ${selected.partName}` : 'ไม่พบ Item FG'}</h2>{selected && <small className="production-item-model">Model / SPEC: {selected.spec || '—'} • DWG: {selected.drawingNo || '—'}</small>}</div></div>{notice && <div className="inline-notice"><FileUp size={17} />{notice}</div>}
       {selected && documentTypes.map(({ label, type }) => {
         const asset = assetByType.get(type)
@@ -353,6 +395,17 @@ function DocumentManager() {
       <p className="helper-text">ต้นฉบับเก็บใน Cloudflare R2 แบบ Private และ Supabase เก็บ Metadata/Version เท่านั้น</p>
     </section>
     </div>
+    <DeleteConfirmModal
+      open={deleteItemOpen}
+      onClose={() => setDeleteItemOpen(false)}
+      onConfirm={confirmDeleteDocumentItem}
+      title={selected?.source === 'raw_material' ? 'ลบเอกสารของ Item หรือไม่?' : 'ลบ Item และเอกสารทั้งหมดหรือไม่?'}
+      description={selected?.source === 'raw_material'
+        ? 'ระบบจะลบ Metadata ทุก Revision และไฟล์ต้นฉบับของ Item นี้ แต่จะไม่ลบ Raw Material Master'
+        : 'ระบบจะลบ Production Item, Metadata ทุก Revision และไฟล์ต้นฉบับทั้งหมดจากพื้นที่จัดเก็บถาวร'}
+      resourceName={selected ? `${selected.itemFg} — ${selected.partName}` : ''}
+      confirmationValue={selected?.itemFg}
+    />
     {newItemOpen && createPortal(<div className="modal-overlay production-item-overlay" role="presentation">
       <section className="modal-panel production-item-modal" role="dialog" aria-modal="true" aria-labelledby="new-production-item-title">
         <header className="modal-header"><span className="modal-icon"><Plus size={22} /></span><div><p className="eyebrow">PRODUCTION ITEM MASTER</p><h2 id="new-production-item-title">เพิ่ม Item ใหม่พร้อมเอกสาร</h2></div><button className="icon-button" type="button" onClick={closeNewItem} disabled={creatingItem} aria-label="ปิด"><X size={19} /></button></header>

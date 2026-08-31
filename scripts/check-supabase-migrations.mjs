@@ -23,6 +23,7 @@ const expectedOrder = [
   '202608270003_restore_raw_material_112200.sql',
   '202608270004_production_item_master.sql',
   '202608280001_delete_pr_history.sql',
+  '202608310001_delete_settings_records.sql',
 ];
 const errors = [];
 
@@ -75,6 +76,8 @@ for (const required of [
   'public.create_production_item_with_documents(',
   'public.search_pr_history(',
   'public.delete_purchase_request_history(',
+  'public.delete_settings_master_item(',
+  'public.delete_settings_document_item(',
 ]) {
   if (!allSql.includes(required)) errors.push(`Missing required migration token: ${required}`);
 }

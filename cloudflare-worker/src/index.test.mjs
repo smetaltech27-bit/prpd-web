@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canReadDocument, corsHeaders, objectKeyFromPath, parseAllowedOrigins, verifyAccessToken } from './index.js'
+import { canReadDocument, corsHeaders, deleteObject, objectKeyFromPath, parseAllowedOrigins, verifyAccessToken } from './index.js'
 
 function base64Url(value) {
   return Buffer.from(value).toString('base64url')
@@ -17,6 +17,40 @@ test('returns CORS only for an explicitly allowed origin', () => {
   const allowed = parseAllowedOrigins('https://example.com, http://localhost:5173')
   assert.equal(corsHeaders('https://example.com', allowed).get('access-control-allow-origin'), 'https://example.com')
   assert.equal(corsHeaders('https://evil.example', allowed).get('access-control-allow-origin'), null)
+  assert.match(corsHeaders('https://example.com', allowed).get('access-control-allow-methods'), /DELETE/)
+})
+
+test('deletes only an immutable document key for a Settings administrator', async () => {
+  const originalFetch = globalThis.fetch
+  const deleted = []
+  globalThis.fetch = async () => Response.json(true)
+  try {
+    const response = await deleteObject({
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
+      DOCUMENTS: { delete: async (key) => deleted.push(key) },
+    }, 'drawing/tm4207a/revisions/abc-123.jpg', 'settings-token')
+    assert.equal(response.status, 204)
+    assert.deepEqual(deleted, ['drawing/tm4207a/revisions/abc-123.jpg'])
+
+    const legacyResponse = await deleteObject({
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
+      DOCUMENTS: { delete: async (key) => deleted.push(key) },
+    }, 'qc/tm4207a/v001/tm4207a.jpg', 'settings-token')
+    assert.equal(legacyResponse.status, 204)
+    assert.equal(deleted.length, 2)
+
+    const unsafeResponse = await deleteObject({
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
+      DOCUMENTS: { delete: async (key) => deleted.push(key) },
+    }, 'unmanaged/secret.txt', 'settings-token')
+    assert.equal(unsafeResponse.status, 400)
+    assert.equal(deleted.length, 2)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })
 
 test('verifies a current authenticated Supabase ES256 token', async () => {

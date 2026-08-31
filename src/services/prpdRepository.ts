@@ -2,6 +2,7 @@ import type { MaterialItem } from '../types/domain'
 import { settingsSupabase, supabase } from '../lib/supabase'
 import {
   createImmutableDocumentPath,
+  deletePrivateDocument,
   uploadPrivateDocument,
   type PrivateDocumentLocation,
 } from './documentStorage'
@@ -140,6 +141,23 @@ export interface CreateProductionItemInput {
   drawingNo: string
   model: string
   files: Record<DocumentAssetType, File>
+}
+
+interface DeleteDocumentItemRpcResult {
+  documents?: Array<{
+    storage_provider: 'supabase' | 'r2'
+    storage_bucket: string
+    storage_path: string
+  }>
+  deleted_item?: number
+  deleted_assets?: number
+}
+
+export interface DeleteDocumentItemResult {
+  deletedItem: number
+  deletedAssets: number
+  deletedFiles: number
+  failedFiles: number
 }
 
 interface ProductionItemRpcRow {
@@ -394,6 +412,7 @@ function mapProductionItem(row: ProductionItemRpcRow): MaterialItem {
     unitPrice: 0,
     usage: 1,
     comment: row.source,
+    source: row.source,
   }
 }
 
@@ -472,6 +491,50 @@ export async function setMasterItemActive(kind: 'raw' | 'equipment', id: string,
   const table = (kind === 'raw' ? 'raw_materials' : 'factory_supplies') as string
   const { error } = await settingsSupabase.from(table).update({ is_active: isActive }).eq('id', id)
   if (error) throw error
+}
+
+export async function deleteMasterItem(kind: 'raw' | 'equipment', id: string): Promise<void> {
+  if (!settingsSupabase) throw new Error('Settings access is not configured')
+  const { data, error } = await settingsSupabase.rpc('delete_settings_master_item', {
+    p_kind: kind,
+    p_id: id,
+  })
+  if (error) {
+    if (error.code === '23503' || error.message.includes('referenced by PR history')) {
+      throw new Error('รายการนี้มีประวัติ PR อ้างอิงอยู่ จึงลบถาวรไม่ได้ กรุณาใช้ “ปิดใช้งาน” แทน')
+    }
+    throw error
+  }
+  if (Number(data ?? 0) !== 1) throw new Error('ไม่พบรายการที่ต้องการลบ หรือรายการถูกลบไปแล้ว')
+}
+
+export async function deleteDocumentItem(
+  source: 'production' | 'raw_material',
+  itemId: string,
+  itemFg: string,
+): Promise<DeleteDocumentItemResult> {
+  if (!settingsSupabase) throw new Error('Settings access is not configured')
+  const { data, error } = await settingsSupabase.rpc('delete_settings_document_item', {
+    p_source: source,
+    p_item_id: itemId,
+    p_item_fg: itemFg,
+  })
+  if (error) throw error
+
+  const payload = (data ?? {}) as DeleteDocumentItemRpcResult
+  const documents = payload.documents ?? []
+  const fileResults = await Promise.allSettled(documents.map((document) => deletePrivateDocument({
+    storageProvider: document.storage_provider,
+    bucket: document.storage_bucket,
+    path: document.storage_path,
+  })))
+  const failedFiles = fileResults.filter((result) => result.status === 'rejected').length
+  return {
+    deletedItem: Number(payload.deleted_item ?? 0),
+    deletedAssets: Number(payload.deleted_assets ?? 0),
+    deletedFiles: fileResults.length - failedFiles,
+    failedFiles,
+  }
 }
 
 export async function uploadDocumentAsset(

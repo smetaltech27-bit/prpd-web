@@ -90,3 +90,20 @@ export async function uploadPrivateDocument(path: string, file: File): Promise<v
   })
   if (!response.ok) throw new Error(await workerError(response))
 }
+
+export async function deletePrivateDocument(location: PrivateDocumentLocation): Promise<void> {
+  if (location.storageProvider === 'supabase') {
+    if (!settingsSupabase) throw new Error('Supabase Storage is not configured')
+    const { error } = await settingsSupabase.storage.from(location.bucket).remove([location.path])
+    if (error) throw error
+    return
+  }
+
+  if (!isDocumentWorkerConfigured || !workerUrl) throw new Error('Private document gateway is not configured')
+  const token = await sessionToken(true)
+  const response = await fetch(`${workerUrl}/v1/documents/${encodeObjectKey(location.path)}`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${token}` },
+  })
+  if (!response.ok) throw new Error(await workerError(response))
+}
