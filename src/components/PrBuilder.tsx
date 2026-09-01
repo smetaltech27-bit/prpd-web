@@ -350,8 +350,8 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
             <label><span>จำนวนที่ต้องการผลิต (ชิ้น) *</span><input type="number" min="1" value={productionQuantity} onChange={(event) => setProductionQuantity(numberValue(event, 1))} /></label>
             <label><span>Due Date *</span><input type="date" min={minimumDueDate} value={dueDate} onChange={(event) => updateHeaderDueDate(event.target.value)} /></label>
             <div className="legacy-pr-input-actions">
-              <button className="button button-primary" onClick={addRawMaterial}><Search size={17} /> ดึงข้อมูล</button>
               <button className="button button-secondary" type="button" onClick={clearRawMaterialSearch} disabled={!itemFg && productionQuantity === 1 && !dueDate} title="ล้างเฉพาะข้อมูลค้นหา โดยไม่ล้างรายการที่เลือก"><X size={17} /> ล้างข้อมูล</button>
+              <button className="button button-primary" onClick={addRawMaterial}><Search size={17} /> ดึงข้อมูล</button>
             </div>
           </div>
         ) : (

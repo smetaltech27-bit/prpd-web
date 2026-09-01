@@ -23,6 +23,10 @@ describe('Raw Material PR search clearing', () => {
   it('clears only the search inputs and keeps the selected raw-material lines', () => {
     render(<PrBuilder category="Raw Material" items={[rawMaterial]} />)
 
+    const actionLabels = Array.from(document.querySelectorAll('.legacy-pr-input-actions button'))
+      .map((button) => button.textContent?.trim())
+    expect(actionLabels).toEqual(['ล้างข้อมูล', 'ดึงข้อมูล'])
+
     fireEvent.change(screen.getByLabelText('Item FG *'), { target: { value: 'TM4207A' } })
     fireEvent.change(screen.getByLabelText('จำนวนที่ต้องการผลิต (ชิ้น) *'), { target: { value: '2' } })
     fireEvent.change(screen.getByLabelText('Due Date *'), { target: { value: '2027-01-02' } })
