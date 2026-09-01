@@ -125,6 +125,14 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
     setRawLines((current) => current.map((line) => line.lineId === lineId ? { ...line, ...patch } : line))
   }
 
+  function clearRawMaterialSearch() {
+    setItemFg('')
+    setProductionQuantity(1)
+    setDueDate('')
+    setError('')
+    setNotice('')
+  }
+
   function toggleEquipment(item: MaterialItem) {
     if (!dueDate) {
       setError('กรุณาระบุ Due Date ก่อนเลือกรายการ')
@@ -341,7 +349,10 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
             <label><span>Item FG *</span><input value={itemFg} onChange={(event) => setItemFg(event.target.value)} placeholder="เช่น TM4207A" onKeyDown={(event) => { if (event.key === 'Enter') addRawMaterial() }} /></label>
             <label><span>จำนวนที่ต้องการผลิต (ชิ้น) *</span><input type="number" min="1" value={productionQuantity} onChange={(event) => setProductionQuantity(numberValue(event, 1))} /></label>
             <label><span>Due Date *</span><input type="date" min={minimumDueDate} value={dueDate} onChange={(event) => updateHeaderDueDate(event.target.value)} /></label>
-            <button className="button button-primary" onClick={addRawMaterial}><Search size={17} /> ดึงข้อมูล</button>
+            <div className="legacy-pr-input-actions">
+              <button className="button button-primary" onClick={addRawMaterial}><Search size={17} /> ดึงข้อมูล</button>
+              <button className="button button-secondary" type="button" onClick={clearRawMaterialSearch} disabled={!itemFg && productionQuantity === 1 && !dueDate} title="ล้างเฉพาะข้อมูลค้นหา โดยไม่ล้างรายการที่เลือก"><X size={17} /> ล้างข้อมูล</button>
+            </div>
           </div>
         ) : (
           <div className="legacy-pr-inputs equipment-filters">
@@ -359,7 +370,6 @@ export function PrBuilder({ category, items }: PrBuilderProps) {
         )}
 
         <div className="legacy-pr-actions">
-          {isRaw && <button className="button button-secondary" disabled={!rawLines.length} onClick={() => setRawLines([])}>ล้างข้อมูล</button>}
           {!isRaw && <button className="button button-secondary" disabled={!lines.length} onClick={clearEquipmentSelection}>ล้างข้อมูล</button>}
           <button className="button button-primary" disabled={!lines.length} onClick={preview}><Printer size={17} /> สรุปและเตรียมพิมพ์</button>
         </div>
