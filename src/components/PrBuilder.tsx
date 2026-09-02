@@ -437,17 +437,18 @@ function RawMaterialTable({ lines, updateLine, removeLine }: {
   return <div className="table-wrap legacy-flow-table"><table className="data-table editable-table raw-material-table"><thead><tr><th>No.</th><th>Vendor</th><th>Item FG</th><th>Code RM</th><th>Name Part</th><th>Type</th><th>Dimension</th><th>จำนวนผลิต</th><th>Q’ty</th><th>Price</th><th>Comment</th><th>จัดการ</th></tr></thead><tbody>
     {!lines.length && <tr><td colSpan={12}><EmptyState title="ยังไม่มีรายการ" description="กรอก Item FG แล้วกดดึงข้อมูล ระบบจะแสดง Raw Material ทุก Vendor" /></td></tr>}
     {lines.map((line, index) => <tr key={line.lineId}>
-      <td>{index + 1}</td>
+      <td className="raw-material-cell-center">{index + 1}</td>
       <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.vendor || '-'}</span></td>
-      <td><span className="item-fg-value">{line.itemFg}</span></td><td>{line.codeOrder || '-'}</td>
+      <td className="raw-material-cell-center"><span className="item-fg-value">{line.itemFg}</span></td>
+      <td className="raw-material-cell-center">{line.codeOrder || '-'}</td>
       <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.namePart || '-'}</span></td>
-      <td>{line.materialType || '-'}</td>
+      <td className="raw-material-cell-center">{line.materialType || '-'}</td>
       <td><span className="master-value" title="ข้อมูลจาก Master Data">{line.dimension || '-'}</span></td>
-      <td>{line.fgQuantity}</td>
-      <td><input className="number-input" type="number" min="0.0001" step="any" value={line.quantity} onChange={(event) => updateLine(line.lineId, { quantity: numberValue(event) })} /></td>
-      <td><input className="number-input" type="number" min="0" step="0.01" value={line.unitPrice ?? 0} onChange={(event) => updateLine(line.lineId, { unitPrice: numberValue(event) })} /></td>
+      <td className="raw-material-cell-center">{line.fgQuantity}</td>
+      <td className="raw-material-cell-center"><input className="number-input" type="number" min="0.0001" step="any" value={line.quantity} onChange={(event) => updateLine(line.lineId, { quantity: numberValue(event) })} /></td>
+      <td className="raw-material-cell-center"><input className="number-input" type="number" min="0" step="0.01" value={line.unitPrice ?? 0} onChange={(event) => updateLine(line.lineId, { unitPrice: numberValue(event) })} /></td>
       <td><input value={line.comment ?? ''} onChange={(event) => updateLine(line.lineId, { comment: event.target.value })} /></td>
-      <td><button className="icon-button danger" onClick={() => removeLine(line.lineId)} aria-label="ลบรายการ"><Trash2 size={16} /></button></td>
+      <td className="raw-material-cell-center"><button className="icon-button danger" onClick={() => removeLine(line.lineId)} aria-label="ลบรายการ"><Trash2 size={16} /></button></td>
     </tr>)}
   </tbody></table></div>
 }

@@ -169,6 +169,8 @@ h1, h2, h3, p { margin-top: 0; }
 .raw-material-table td span,
 .raw-material-table input { color: #000; }
 .raw-material-table th { text-align: center; }
+.raw-material-table td.raw-material-cell-center,
+.raw-material-table td.raw-material-cell-center input { text-align: center; }
 .raw-material-table .item-fg-value { margin-top: 0; color: #000; font-size: 11px; font-weight: 400; }
 .equipment-pr-table th,
 .equipment-pr-table td,

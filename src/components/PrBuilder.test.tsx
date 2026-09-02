@@ -39,6 +39,12 @@ describe('Raw Material PR search clearing', () => {
     expect(screen.getByText('12mm. X 105mm. X 240mm.')).toBeInTheDocument()
     expect(document.querySelectorAll('.raw-material-table input[type="date"]')).toHaveLength(0)
 
+    const dataRow = screen.getByText('PRESS PLATE').closest('tr')
+    expect(dataRow).not.toBeNull()
+    const cells = within(dataRow as HTMLTableRowElement).getAllByRole('cell')
+    expect([0, 2, 3, 5, 7, 8, 9, 11].every((index) => cells[index].classList.contains('raw-material-cell-center'))).toBe(true)
+    expect([1, 4, 6, 10].every((index) => !cells[index].classList.contains('raw-material-cell-center'))).toBe(true)
+
     fireEvent.change(screen.getByLabelText('Item FG *'), { target: { value: 'TM4207A' } })
     fireEvent.change(screen.getByLabelText('จำนวนที่ต้องการผลิต (ชิ้น) *'), { target: { value: '3' } })
     fireEvent.click(screen.getByRole('button', { name: 'ล้างข้อมูล' }))
