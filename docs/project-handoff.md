@@ -1,6 +1,6 @@
 # PRPD Project Handoff
 
-เอกสารนี้สรุปสถานะของระบบ PRPD เพื่อใช้พัฒนาต่อ ตรวจสอบปัญหา หรือส่งต่องานให้ Developer/AI ตัวอื่น โดยอ้างอิง Codebase และ Git history ณ วันที่ **1 กันยายน 2026** ที่ฐาน Commit `dc83edb` (`fix: place clear action before raw material search`)
+เอกสารนี้สรุปสถานะของระบบ PRPD เพื่อใช้พัฒนาต่อ ตรวจสอบปัญหา หรือส่งต่องานให้ Developer/AI ตัวอื่น โดยอ้างอิง Codebase และ Git history ณ วันที่ **2 กันยายน 2026** ที่ฐาน Commit `80262de` (`fix: align raw material dimension columns`)
 
 > เมื่อระบบมีการเปลี่ยนแปลงเชิง Feature, Database, Security, Deployment หรือ Business rule ให้แก้หัวข้อ “การแก้ไขล่าสุด” และส่วนที่เกี่ยวข้องในเอกสารนี้พร้อมกับ Code ทุกครั้ง
 
@@ -79,7 +79,8 @@ Route และการโหลด Master catalog เริ่มที่ `sr
 - ผู้ใช้กรอก Item FG, จำนวนที่จะผลิต และ Due Date
 - ระบบค้นหา Raw Material ของ Item FG แบบไม่แยกตัวพิมพ์เล็ก–ใหญ่
 - ดึงทุกรายการ/ทุก Vendor ที่ตรงกัน แล้วคำนวณจำนวนสั่งซื้อจาก `ceil(จำนวนผลิต / usage)`
-- ผู้ใช้แก้ Q’ty, Price, Due Date และ Comment ของแต่ละบรรทัดได้
+- ตารางแสดงคอลัมน์ Dimension จาก Raw Material Master แทน Spec
+- ผู้ใช้แก้ Q’ty, Price และ Comment ของแต่ละบรรทัดได้ ส่วน Due Date ใช้ค่าหลักด้านบนร่วมกันทั้งชุดและไม่แสดงช่องแก้รายบรรทัด
 - Due Date ห้ามย้อนหลังวันปัจจุบันตามเขตเวลา Bangkok
 - ปุ่ม “ล้างข้อมูล” ด้านบนล้างเฉพาะ Item FG, จำนวนผลิต และ Due Date โดยไม่ล้างรายการ Raw Material ที่ดึงมาแล้วในตาราง
 - ตำแหน่งปุ่มบน Desktop/Mobile เรียง “ล้างข้อมูล” ทางซ้าย แล้ว “ดึงข้อมูล” ทางขวา และไม่มีปุ่มล้างรายการทั้งหมดด้านล่างเพื่อป้องกันการกดพลาด
@@ -101,6 +102,7 @@ Route และการโหลด Master catalog เริ่มที่ `sr
 - หากกลับไปแก้ไข ระบบใช้เลขที่จองเดิมเมื่อเหมาะสมและอัปเดต Draft
 - ลำดับเลขใน `private.pr_sequences` ต้องเดินหน้าเสมอ แม้ลบประวัติแล้วก็ห้ามนำเลขเก่ากลับมาใช้
 - เอกสาร PR พิมพ์ A4 Landscape สูงสุด 12 รายการต่อหน้า และลายเซ็นอยู่หน้าสุดท้าย
+- ตารางในเอกสาร Preview/Print ใช้หัวคอลัมน์ Dimension และยังแสดงรายละเอียด `spec / dimension` เดิมให้ครบ
 
 ### 5.4 Work Order และเอกสารการผลิต
 
@@ -241,7 +243,7 @@ npm run check
 3. TypeScript build + Vite production build
 4. Supabase migration static checks
 
-สถานะล่าสุด ณ Commit `dc83edb`: Frontend 47 tests และ Worker 6 tests ผ่าน โดย Vite มีคำเตือน Bundle JavaScript ใหญ่กว่า 500 kB ซึ่งยังไม่ทำให้ Build fail
+สถานะล่าสุด ณ Commit `80262de`: Frontend 48 tests และ Worker 6 tests ผ่าน โดย Vite มีคำเตือน Bundle JavaScript ใหญ่กว่า 500 kB ซึ่งยังไม่ทำให้ Build fail
 
 การทดสอบ Database migration แบบ Static ไม่แทนการ Apply กับ Disposable/Staging Postgres การแก้ SQL ต้องทดสอบสิทธิ์ RLS และ Transaction บน Staging ก่อน Production
 
@@ -272,6 +274,7 @@ npm run check
 
 | Commit | การเปลี่ยนแปลง |
 | --- | --- |
+| `80262de` | หน้า Raw Material PR แสดง Dimension แทน Spec, ตัด Due Date รายบรรทัด และเปลี่ยนหัวคอลัมน์ใน Preview/Print เป็น Dimension พร้อม Regression tests |
 | `dc83edb` | สลับตำแหน่งปุ่มหน้า Raw Material PR ให้ “ล้างข้อมูล” อยู่ซ้ายและ “ดึงข้อมูล” อยู่ขวา พร้อม Test ยืนยันลำดับ |
 | `cb5060b` | ย้ายปุ่มล้างข้อมูลขึ้นมาไว้ข้างปุ่มดึงข้อมูล ให้ล้างเฉพาะ Item FG/จำนวนผลิต/Due Date โดยคงรายการที่เลือกไว้ และนำปุ่มล้างรายการทั้งหมดด้านล่างออก |
 | `4bb64e2` | เปลี่ยนชื่อเมนู “ใบสั่งงาน” เป็น “ออกใบสั่งงาน” |
