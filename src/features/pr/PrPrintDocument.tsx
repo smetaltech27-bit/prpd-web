@@ -57,7 +57,7 @@ export const PrPrintDocument = forwardRef<HTMLDivElement, PrPrintDocumentProps>(
             </section>
 
             <table className="pr-print-table">
-              <thead><tr><th>No.</th><th>Code RM</th><th>Name part</th><th>Type</th><th>Spec</th><th>Q’ty</th><th>Price</th><th>Due date</th><th>Comment</th></tr></thead>
+              <thead><tr><th>No.</th><th>Code RM</th><th>Name part</th><th>Type</th><th>Dimension</th><th>Q’ty</th><th>Price</th><th>Due date</th><th>Comment</th></tr></thead>
               <tbody>
                 {page.rows.map((item, rowIndex) => {
                   const absoluteIndex = (page.pageNumber - 1) * page.rows.length + rowIndex + 1
