@@ -56,7 +56,7 @@ describe('Raw Material PR search clearing', () => {
     expect(screen.getAllByRole('button', { name: 'ล้างข้อมูล' })).toHaveLength(1)
   })
 
-  it('labels the print column as Dimension while preserving the combined specification details', () => {
+  it('shows only the Dimension value in the raw-material print column', () => {
     render(<PrBuilder category="Raw Material" items={[rawMaterial]} />)
 
     fireEvent.change(screen.getByLabelText('Item FG *'), { target: { value: 'TM4207A' } })
@@ -67,6 +67,7 @@ describe('Raw Material PR search clearing', () => {
     const preview = screen.getByRole('dialog', { name: 'PR Preview' })
     expect(within(preview).getByRole('columnheader', { name: 'Dimension' })).toBeInTheDocument()
     expect(within(preview).queryByRole('columnheader', { name: 'Spec' })).not.toBeInTheDocument()
-    expect(within(preview).getByText('AG600L / 12mm. X 105mm. X 240mm.')).toBeInTheDocument()
+    expect(within(preview).getByText('12mm. X 105mm. X 240mm.')).toBeInTheDocument()
+    expect(within(preview).queryByText(/AG600L/)).not.toBeInTheDocument()
   })
 })

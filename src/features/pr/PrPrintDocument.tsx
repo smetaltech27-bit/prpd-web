@@ -64,7 +64,9 @@ export const PrPrintDocument = forwardRef<HTMLDivElement, PrPrintDocumentProps>(
                   return item ? (
                     <tr key={item.lineId}>
                       <td>{absoluteIndex}</td><td>{item.codeOrder || '-'}</td><td>{item.namePart}</td>
-                      <td>{item.materialType || '-'}</td><td>{[item.spec, item.dimension].filter(Boolean).join(' / ') || '-'}</td>
+                      <td>{item.materialType || '-'}</td><td>{draft.kind === 'raw-material'
+                        ? item.dimension || '-'
+                        : [item.spec, item.dimension].filter(Boolean).join(' / ') || '-'}</td>
                       <td>{item.quantity}</td><td>{money.format(item.unitPrice ?? 0)}</td><td>{dateText(item.dueDate ?? '')}</td><td>{item.comment || '-'}</td>
                     </tr>
                   ) : <tr className="pr-empty-row" key={`empty-${rowIndex}`} aria-hidden="true">{Array.from({ length: 9 }, (_, cellIndex) => <td key={cellIndex}>&nbsp;</td>)}</tr>
