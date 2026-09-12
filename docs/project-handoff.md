@@ -1,6 +1,6 @@
 # PRPD Project Handoff
 
-เอกสารนี้สรุปสถานะของระบบ PRPD เพื่อใช้พัฒนาต่อ ตรวจสอบปัญหา หรือส่งต่องานให้ Developer/AI ตัวอื่น โดยอ้างอิง Codebase และ Git history ณ วันที่ **2 กันยายน 2026** ที่ฐาน Commit `bb157c2` (`fix: center raw material table headers`)
+เอกสารนี้สรุปสถานะของระบบ PRPD เพื่อใช้พัฒนาต่อ ตรวจสอบปัญหา หรือส่งต่องานให้ Developer/AI ตัวอื่น โดยอ้างอิง Codebase และ Git history ณ วันที่ **12 กันยายน 2026** ที่ฐาน Commit `b51ae46` (`fix: show only raw material dimension in print`)
 
 > เมื่อระบบมีการเปลี่ยนแปลงเชิง Feature, Database, Security, Deployment หรือ Business rule ให้แก้หัวข้อ “การแก้ไขล่าสุด” และส่วนที่เกี่ยวข้องในเอกสารนี้พร้อมกับ Code ทุกครั้ง
 
@@ -103,7 +103,7 @@ Route และการโหลด Master catalog เริ่มที่ `sr
 - หากกลับไปแก้ไข ระบบใช้เลขที่จองเดิมเมื่อเหมาะสมและอัปเดต Draft
 - ลำดับเลขใน `private.pr_sequences` ต้องเดินหน้าเสมอ แม้ลบประวัติแล้วก็ห้ามนำเลขเก่ากลับมาใช้
 - เอกสาร PR พิมพ์ A4 Landscape สูงสุด 12 รายการต่อหน้า และลายเซ็นอยู่หน้าสุดท้าย
-- ตารางในเอกสาร Preview/Print ใช้หัวคอลัมน์ Dimension และยังแสดงรายละเอียด `spec / dimension` เดิมให้ครบ
+- ตารางในเอกสาร Preview/Print ใช้หัวคอลัมน์ Dimension โดย Raw Material แสดงเฉพาะค่า `dimension` จาก Master Data และไม่ต่อค่า `spec` เข้ามา ส่วน Equipment ยังคงรายละเอียด `spec / dimension` ตาม Flow เดิม
 
 ### 5.4 Work Order และเอกสารการผลิต
 
@@ -244,7 +244,7 @@ npm run check
 3. TypeScript build + Vite production build
 4. Supabase migration static checks
 
-สถานะล่าสุด ณ Commit `80262de`: Frontend 48 tests และ Worker 6 tests ผ่าน โดย Vite มีคำเตือน Bundle JavaScript ใหญ่กว่า 500 kB ซึ่งยังไม่ทำให้ Build fail
+สถานะล่าสุด ณ Commit `b51ae46`: Frontend 48 tests และ Worker 6 tests ผ่าน พร้อม TypeScript/Vite production build และ Migration static checks 12 ไฟล์ โดย Vite มีคำเตือน Bundle JavaScript ใหญ่กว่า 500 kB ซึ่งยังไม่ทำให้ Build fail
 
 การทดสอบ Database migration แบบ Static ไม่แทนการ Apply กับ Disposable/Staging Postgres การแก้ SQL ต้องทดสอบสิทธิ์ RLS และ Transaction บน Staging ก่อน Production
 
@@ -275,6 +275,7 @@ npm run check
 
 | Commit | การเปลี่ยนแปลง |
 | --- | --- |
+| `b51ae46` | หน้า Preview/Print ของ Raw Material แสดงเฉพาะค่า Dimension และไม่ต่อค่า Spec พร้อม Regression test; Deploy GitHub Pages สำเร็จใน Actions run `34680933016` และตรวจ Production/asset ตอบกลับ HTTP 200 |
 | `11f3186` | จัดข้อมูลตาราง Raw Material ตามชนิดคอลัมน์ พร้อมจัดตัวเลขในช่อง Q’ty/Price กึ่งกลางให้ตรงกับหัวคอลัมน์ และเพิ่ม Regression test |
 | `bb157c2` | จัดชื่อหัวคอลัมน์ทุกช่องของตาราง Raw Material ให้อยู่กึ่งกลาง โดยไม่กระทบตารางอื่น |
 | `80262de` | หน้า Raw Material PR แสดง Dimension แทน Spec, ตัด Due Date รายบรรทัด และเปลี่ยนหัวคอลัมน์ใน Preview/Print เป็น Dimension พร้อม Regression tests |
