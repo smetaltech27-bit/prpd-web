@@ -8,7 +8,7 @@ const item: MaterialItem = {
   partName: 'ARMA',
   spec: 'AL400',
   drawingNo: 'MT524685A',
-  orderCode: '',
+  orderCode: 'RM-0042',
   vendor: 'วิริกิจกรรม 207',
   materialType: 'BRASS BAR',
   dimension: '20mm x 60mm',
@@ -23,6 +23,13 @@ describe('Settings search helpers', () => {
     expect(matchesMasterSearch(item, 'brass')).toBe(true)
     expect(matchesMasterSearch(item, 'arma', 'วิริกิจกรรม 207')).toBe(true)
     expect(matchesMasterSearch(item, 'arma', 'JSR ENTECH 104')).toBe(false)
+  })
+
+  it('searches partial Code RM and preserves the vendor filter', () => {
+    expect(matchesMasterSearch(item, ' rm-004 ')).toBe(true)
+    expect(matchesMasterSearch(item, 'RM-0042', item.vendor)).toBe(true)
+    expect(matchesMasterSearch(item, 'RM-0042', 'OTHER VENDOR')).toBe(false)
+    expect(matchesMasterSearch({ ...item, orderCode: '' }, 'RM-0042')).toBe(false)
   })
 
   it('trims, deduplicates, and sorts vendor names alphabetically', () => {

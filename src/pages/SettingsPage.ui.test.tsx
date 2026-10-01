@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, setMasterItemActive } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, listFactorySupplies, setMasterItemActive } from '../services/prpdRepository'
 import { SettingsPage } from './SettingsPage'
 
 vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: true }))
@@ -76,6 +76,23 @@ describe('Settings document search', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Equipment' }))
     expect(container.querySelector('.settings-layout')).toHaveClass('has-editor')
+  })
+
+  it('searches equipment by Code RM and displays the code before Part', async () => {
+    vi.mocked(listFactorySupplies).mockResolvedValueOnce([{
+      id: 'equipment-code', itemFg: '', partName: 'MACHINE TAP', drawingNo: '',
+      spec: '', orderCode: 'RM-0042', vendor: 'VENDOR A', materialType: 'EQUIPMENT',
+      dimension: 'M4', unitPrice: 255, usage: 1,
+    }])
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Factory Supply / Equipment' }))
+    expect(screen.getAllByRole('columnheader').slice(0, 2).map((cell) => cell.textContent)).toEqual(['CODE RM', 'PART'])
+    expect(screen.getByText('กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ')).toHaveAttribute('colspan', '12')
+    fireEvent.change(screen.getByPlaceholderText('ค้นหา Code RM, Item FG, Part, Spec หรือ Vendor…'), { target: { value: ' rm-004 ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+    const codeCell = await screen.findByRole('cell', { name: 'RM-0042' })
+    expect(codeCell.nextElementSibling).toHaveTextContent('MACHINE TAP')
+    expect(listFactorySupplies).toHaveBeenCalledWith(false)
   })
 
   it('places the horizontal Item Master bar before Private R2 Documents', () => {

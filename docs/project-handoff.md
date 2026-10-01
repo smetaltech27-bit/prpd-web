@@ -275,6 +275,7 @@ npm run check
 
 | Commit | การเปลี่ยนแปลง |
 | --- | --- |
+| 1 ตุลาคม 2026 | Settings แท็บ Factory Supply / Equipment เพิ่มคอลัมน์ CODE RM ก่อน PART จาก `orderCode` และข้อความช่องค้นหา; ตัวช่วยค้นหา Master รองรับ Code RM แบบบางส่วน ไม่แยกตัวพิมพ์เล็ก–ใหญ่ และยังกรอง Vendor ร่วมกันได้ (Raw Material ใช้ตัวช่วยเดียวกันจึงค้นหารหัสได้ด้วย); ไม่เปลี่ยน Schema หรือขั้นตอนบันทึกข้อมูล; `npm run check` ผ่าน 50 frontend tests, 6 worker tests, Build และ Migration static checks พร้อม `git diff --check`; ยังไม่ได้ตรวจ Browser/อุปกรณ์จริง; ผู้ใช้อนุมัติ Deploy แล้ว โดยติดตามผล release จาก GitHub Actions ของ Commit นี้ |
 | `b51ae46` | หน้า Preview/Print ของ Raw Material แสดงเฉพาะค่า Dimension และไม่ต่อค่า Spec พร้อม Regression test; Deploy GitHub Pages สำเร็จใน Actions run `34680933016` และตรวจ Production/asset ตอบกลับ HTTP 200 |
 | `11f3186` | จัดข้อมูลตาราง Raw Material ตามชนิดคอลัมน์ พร้อมจัดตัวเลขในช่อง Q’ty/Price กึ่งกลางให้ตรงกับหัวคอลัมน์ และเพิ่ม Regression test |
 | `bb157c2` | จัดชื่อหัวคอลัมน์ทุกช่องของตาราง Raw Material ให้อยู่กึ่งกลาง โดยไม่กระทบตารางอื่น |
