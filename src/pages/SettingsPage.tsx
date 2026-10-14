@@ -1,4 +1,4 @@
-import { Archive, CheckCircle2, FileCheck2, FileImage, FileUp, LoaderCircle, LockKeyhole, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
+import { Archive, CheckCircle2, FileCheck2, FileImage, FileSpreadsheet, FileUp, LoaderCircle, LockKeyhole, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { rawMaterials, equipmentItems } from '../app/mockData'
@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, findActiveDocuments, listAllSettingsMasterItems, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, setMasterItemActive, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
 import { fetchPrivateDocument } from '../services/documentStorage'
 import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
+import { downloadSettingsMasterWorkbook } from '../features/settings/masterExport'
 import type { MaterialItem } from '../types/domain'
 
 type SettingsTab = 'raw' | 'equipment' | 'documents'
@@ -231,6 +232,7 @@ export function SettingsPage() {
         <div className="settings-selection-toolbar">
           <label><input type="checkbox" checked={allSelected} ref={(node) => { if (node) node.indeterminate = selectedRows.length > 0 && !allSelected }} disabled={searching || !activeRows.length} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(activeRows.map((item) => item.id)))} />เลือกทั้งหมด</label>
           <span role="status">{activeRows.length} รายการ • เลือก {selectedRows.length} รายการ</span>
+          <button className="button button-secondary" type="button" disabled={searching || saving || !activeRows.length} onClick={() => downloadSettingsMasterWorkbook(activeRows, tab === 'raw' ? 'raw' : 'equipment')}><FileSpreadsheet size={17} />Export Excel</button>
           <button className="button button-danger" type="button" disabled={searching || saving || !selectedRows.length} onClick={() => setBulkDeleteTarget({ kind: tab, items: [...selectedRows] })}><Trash2 size={17} />ลบรายการที่เลือก</button>
         </div>
         <div className="table-wrap settings-master-scroll"><table className="data-table settings-master-table"><thead><tr>

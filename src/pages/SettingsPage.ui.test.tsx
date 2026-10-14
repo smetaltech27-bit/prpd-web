@@ -1,11 +1,13 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, listAllSettingsMasterItems, listFactorySupplies, setMasterItemActive } from '../services/prpdRepository'
+import { downloadSettingsMasterWorkbook } from '../features/settings/masterExport'
 import { SettingsPage } from './SettingsPage'
 
 vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: true }))
 vi.mock('../services/settingsAccess', () => ({ lockSettings: vi.fn() }))
 vi.mock('../services/documentStorage', () => ({ fetchPrivateDocument: vi.fn() }))
+vi.mock('../features/settings/masterExport', () => ({ downloadSettingsMasterWorkbook: vi.fn() }))
 vi.mock('../services/prpdRepository', () => ({
   deactivateMasterItem: vi.fn(),
   deleteDocumentItem: vi.fn(async () => ({ deletedItem: 1, deletedAssets: 3, deletedFiles: 3, failedFiles: 0 })),
@@ -116,6 +118,8 @@ describe('Settings document search', () => {
     expect(screen.getByText('PART-B')).toBeInTheDocument()
     expect(search).toHaveValue('')
     expect(listAllSettingsMasterItems).toHaveBeenCalledWith(tabName === 'Raw Material' ? 'raw' : 'equipment', false)
+    fireEvent.click(screen.getByRole('button', { name: 'Export Excel' }))
+    expect(downloadSettingsMasterWorkbook).toHaveBeenLastCalledWith(allItems, tabName === 'Raw Material' ? 'raw' : 'equipment')
     fireEvent.click(screen.getByRole('checkbox', { name: 'เลือก FG-A' }))
     expect(screen.getByRole('checkbox', { name: 'เลือกทั้งหมด' })).toBePartiallyChecked()
     expect(screen.getByRole('status')).toHaveTextContent('เลือก 1 รายการ')
