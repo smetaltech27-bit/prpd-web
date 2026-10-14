@@ -1,12 +1,12 @@
 import { Archive, CheckCircle2, FileCheck2, FileImage, FileUp, LoaderCircle, LockKeyhole, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { rawMaterials, equipmentItems } from '../app/mockData'
 import { PageHeader } from '../components/AppShell'
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal'
 import { lockSettings } from '../services/settingsAccess'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, findActiveDocuments, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, setMasterItemActive, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, findActiveDocuments, listAllSettingsMasterItems, listFactorySupplies, listRawMaterials, listVendorNames, saveMasterItem, searchProductionItems, setMasterItemActive, uploadDocumentAsset, type ActiveDocumentAsset, type DocumentAssetType, type DocumentUploadStatus } from '../services/prpdRepository'
 import { fetchPrivateDocument } from '../services/documentStorage'
 import { matchesMasterSearch, sortVendorNames } from '../features/settings/search'
 import type { MaterialItem } from '../types/domain'
@@ -43,7 +43,30 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<MaterialItem | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteTarget, setBulkDeleteTarget] = useState<{ kind: 'raw' | 'equipment'; items: MaterialItem[] } | null>(null)
+  const [appliedFilter, setAppliedFilter] = useState({ query: '', vendor: '' })
+  const requestId = useRef(0)
   const activeRows = tab === 'raw' ? rows.raw : rows.equipment
+  const selectedRows = activeRows.filter((item) => selectedIds.has(item.id))
+  const allSelected = activeRows.length > 0 && selectedRows.length === activeRows.length
+
+  function toggleSelection(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function invalidateMasterResults() {
+    requestId.current += 1
+    setSearching(false)
+    setSelectedIds(new Set())
+  }
+
+  useEffect(() => () => { requestId.current += 1 }, [])
 
   function openEditor(item?: MaterialItem) {
     setForm(item ? { ...item } : { ...emptyItem, id: `new-${Date.now()}` })
@@ -63,6 +86,7 @@ export function SettingsPage() {
   }, [tab, vendors.length])
 
   function changeTab(nextTab: SettingsTab) {
+    invalidateMasterResults()
     setTab(nextTab)
     setQuery('')
     setVendor('')
@@ -75,29 +99,40 @@ export function SettingsPage() {
     setSavedNotice('')
   }
 
-  async function searchMaster(event: FormEvent) {
-    event.preventDefault()
+  async function loadMaster(showAll = false) {
     if (tab === 'documents') return
     const key = tab
-    if (!query.trim() && (key === 'raw' || !vendor)) {
+    if (!showAll && !query.trim() && (key === 'raw' || !vendor)) {
       setSavedNotice(key === 'raw' ? 'กรุณากรอกคำค้นหา แล้วกดปุ่มค้นหา' : 'กรุณากรอกคำค้นหา หรือเลือก Vendor แล้วกดปุ่มค้นหา')
       return
     }
     setSearching(true)
     setSavedNotice('')
+    setSelectedIds(new Set())
+    const currentRequest = ++requestId.current
+    const filter = showAll ? { query: '', vendor: '' } : { query, vendor: key === 'equipment' ? vendor : '' }
+    if (showAll) { setQuery(''); setVendor('') }
     try {
       const source = isSupabaseConfigured
-        ? await (key === 'raw' ? listRawMaterials(undefined, showInactive) : listFactorySupplies(showInactive))
+        ? await (showAll ? listAllSettingsMasterItems(key, showInactive) : key === 'raw' ? listRawMaterials(undefined, showInactive) : listFactorySupplies(showInactive))
         : key === 'raw' ? rawMaterials : equipmentItems
-      setRows((current) => ({ ...current, [key]: source.filter((item) => matchesMasterSearch(item, query, key === 'equipment' ? vendor : '')) }))
+      if (currentRequest !== requestId.current) return
+      setAppliedFilter(filter)
+      setRows((current) => ({ ...current, [key]: source.filter((item) => (showInactive || item.isActive !== false) && matchesMasterSearch(item, filter.query, filter.vendor)) }))
       setSearched((current) => ({ ...current, [key]: true }))
     } catch {
+      if (currentRequest !== requestId.current) return
       setRows((current) => ({ ...current, [key]: [] }))
       setSearched((current) => ({ ...current, [key]: true }))
       setSavedNotice('ค้นหาข้อมูลไม่สำเร็จ กรุณาตรวจการเชื่อมต่อ Supabase')
     } finally {
-      setSearching(false)
+      if (currentRequest === requestId.current) setSearching(false)
     }
+  }
+
+  function searchMaster(event: FormEvent) {
+    event.preventDefault()
+    void loadMaster()
   }
 
   async function saveItem(event: FormEvent) {
@@ -118,7 +153,7 @@ export function SettingsPage() {
     setRows((current) => {
       if (!searched[key]) return current
       const existing = current[key].filter((item) => item.id !== form.id && item.id !== savedForm.id)
-      const nextRows = [savedForm, ...existing].filter((item) => matchesMasterSearch(item, query, key === 'equipment' ? vendor : ''))
+      const nextRows = [savedForm, ...existing].filter((item) => (showInactive || item.isActive !== false) && matchesMasterSearch(item, appliedFilter.query, appliedFilter.vendor))
       return { ...current, [key]: nextRows }
     })
     setEditorOpen(false)
@@ -162,6 +197,26 @@ export function SettingsPage() {
     window.dispatchEvent(new Event('prpd-settings-lock'))
   }
 
+  async function confirmBulkDelete() {
+    if (!bulkDeleteTarget) return
+    if (!isSupabaseConfigured) throw new Error('ระบบ Prototype ไม่สามารถลบข้อมูลจากฐานข้อมูลได้')
+    const { kind, items } = bulkDeleteTarget
+    const deleted = new Set<string>()
+    const failed: string[] = []
+    for (const item of items) {
+      try {
+        await deleteMasterItem(kind, item.id)
+        deleted.add(item.id)
+      } catch {
+        failed.push(item.itemFg || item.orderCode || item.partName)
+      }
+    }
+    setRows((current) => ({ ...current, [kind]: current[kind].filter((item) => !deleted.has(item.id)) }))
+    setSelectedIds(new Set(items.filter((item) => !deleted.has(item.id)).map((item) => item.id)))
+    if (deleted.has(form.id)) setEditorOpen(false)
+    setSavedNotice(`ลบสำเร็จ ${deleted.size} รายการ${failed.length ? `; ลบไม่สำเร็จ ${failed.length} รายการ: ${failed.join(', ')} — กรุณาตรวจสิทธิ์/การเชื่อมต่อ หรือใช้ปิดใช้งานหากมีประวัติ PR อ้างอิง` : ''}`)
+  }
+
   return <div className="page settings-page">
     <PageHeader eyebrow="ADMINISTRATION" title="Settings" description="จัดการ Master Data และเอกสารการผลิตจากหน้าเดียว" actions={<><span className="prototype-badge">{isSupabaseConfigured ? 'Supabase connected' : 'UI Prototype'}</span><button className="button button-secondary" onClick={handleLock}><LockKeyhole size={17} /> Lock Settings</button></>} />
     <div className="settings-tabs" role="tablist">
@@ -171,13 +226,18 @@ export function SettingsPage() {
     </div>
     {tab !== 'documents' && <div className={`settings-layout ${editorOpen ? 'has-editor' : ''}`}>
       <section className="card master-card">
-        <div className="table-toolbar settings-master-toolbar"><form className={`settings-search-form ${tab === 'equipment' ? 'has-vendor' : ''}`} onSubmit={searchMaster}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'equipment' ? 'ค้นหา Code RM, Item FG, Part, Spec หรือ Vendor…' : 'ค้นหา Item FG, Part, Spec หรือ Vendor…'} /></label>{tab === 'equipment' && <label className="settings-vendor-filter"><span>Vendor</span><select value={vendor} onChange={(event) => setVendor(event.target.value)}><option value="">ทั้งหมด</option>{vendors.map((name) => <option value={name} key={name}>{name}</option>)}</select></label>}<button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button></form><label className="settings-inactive-toggle"><input type="checkbox" checked={showInactive} onChange={(event) => { setShowInactive(event.target.checked); setRows((current) => ({ ...current, [tab]: [] })); setSearched((current) => ({ ...current, [tab]: false })) }} />แสดงรายการที่ปิดใช้งาน</label><button className="button button-primary settings-add-master" onClick={() => openEditor()}><Plus size={17} /> Add {tab === 'raw' ? 'Raw Material' : 'Equipment'}</button></div>
+        <div className="table-toolbar settings-master-toolbar"><form className={`settings-search-form ${tab === 'equipment' ? 'has-vendor' : ''}`} onSubmit={searchMaster}><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'equipment' ? 'ค้นหา Code RM, Item FG, Part, Spec หรือ Vendor…' : 'ค้นหา Item FG, Part, Spec หรือ Vendor…'} /></label>{tab === 'equipment' && <label className="settings-vendor-filter"><span>Vendor</span><select value={vendor} onChange={(event) => setVendor(event.target.value)}><option value="">ทั้งหมด</option>{vendors.map((name) => <option value={name} key={name}>{name}</option>)}</select></label>}<button className="button button-primary" type="submit" disabled={searching}><Search size={17} />{searching ? 'กำลังค้นหา…' : 'ค้นหา'}</button><button className="button button-secondary" type="button" disabled={searching || saving} onClick={() => void loadMaster(true)}>แสดงข้อมูลทั้งหมด</button></form><label className="settings-inactive-toggle"><input type="checkbox" checked={showInactive} onChange={(event) => { invalidateMasterResults(); setShowInactive(event.target.checked); setRows((current) => ({ ...current, [tab]: [] })); setSearched((current) => ({ ...current, [tab]: false })) }} />แสดงรายการที่ปิดใช้งาน</label><button className="button button-primary settings-add-master" onClick={() => openEditor()}><Plus size={17} /> Add {tab === 'raw' ? 'Raw Material' : 'Equipment'}</button></div>
         {savedNotice && <div className="inline-notice"><Save size={17} />{savedNotice}</div>}
-        <div className="table-wrap"><table className="data-table settings-master-table"><thead><tr>
-          {tab === 'raw' ? <th>ITEM FG</th> : <th>CODE RM</th>}<th>PART</th><th>SPEC</th><th>DWG NO.</th><th>VENDOR</th><th>TYPE</th><th>DIMENSION</th><th>PRICE</th><th>USAGE</th><th>COMMENT</th><th>สถานะ</th><th />
+        <div className="settings-selection-toolbar">
+          <label><input type="checkbox" checked={allSelected} ref={(node) => { if (node) node.indeterminate = selectedRows.length > 0 && !allSelected }} disabled={searching || !activeRows.length} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(activeRows.map((item) => item.id)))} />เลือกทั้งหมด</label>
+          <span role="status">{activeRows.length} รายการ • เลือก {selectedRows.length} รายการ</span>
+          <button className="button button-danger" type="button" disabled={searching || saving || !selectedRows.length} onClick={() => setBulkDeleteTarget({ kind: tab, items: [...selectedRows] })}><Trash2 size={17} />ลบรายการที่เลือก</button>
+        </div>
+        <div className="table-wrap settings-master-scroll"><table className="data-table settings-master-table"><thead><tr>
+          <th className="settings-select-column">เลือก</th>{tab === 'raw' ? <th>ITEM FG</th> : <th>CODE RM</th>}<th>PART</th><th>SPEC</th><th>DWG NO.</th><th>VENDOR</th><th>TYPE</th><th>DIMENSION</th><th>PRICE</th><th>USAGE</th><th>COMMENT</th><th>สถานะ</th><th>จัดการ</th>
         </tr></thead><tbody>{activeRows.map((item) => <tr key={item.id}>
-          <td>{(tab === 'raw' ? item.itemFg : item.orderCode) || '—'}</td><td>{item.partName || '—'}</td><td>{item.spec || '—'}</td><td>{item.drawingNo || '—'}</td><td>{item.vendor || '—'}</td><td>{item.materialType || '—'}</td><td>{item.dimension || '—'}</td><td>฿{item.unitPrice.toLocaleString()}</td><td>{item.usage}</td><td>{item.comment || '—'}</td><td><span className={`master-status ${item.isActive === false ? 'inactive' : 'active'}`}>{item.isActive === false ? 'ปิดใช้งาน' : 'ใช้งานอยู่'}</span></td><td><div className="row-actions"><button className="icon-button" onClick={() => openEditor(item)} title="แก้ไข"><Pencil size={16} /></button><button className={`icon-button ${item.isActive === false ? 'reactivate' : ''}`} onClick={() => void changeItemActive(item, item.isActive === false)} title={item.isActive === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}>{item.isActive === false ? <CheckCircle2 size={16} /> : <Archive size={16} />}</button><button className="icon-button danger" onClick={() => setDeleteTarget(item)} title="ลบออกจากฐานข้อมูล" aria-label={`ลบ ${item.itemFg || item.partName}`}><Trash2 size={16} /></button></div></td>
-        </tr>)}{!activeRows.length && <tr><td colSpan={12} className="settings-empty-results">{searched[tab] ? 'ไม่พบรายการที่ตรงกับเงื่อนไขค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</td></tr>}</tbody></table></div>
+          <td className="settings-select-column"><input type="checkbox" aria-label={`เลือก ${item.itemFg || item.orderCode || item.partName}`} checked={selectedIds.has(item.id)} disabled={searching} onChange={() => toggleSelection(item.id)} /></td><td>{(tab === 'raw' ? item.itemFg : item.orderCode) || '—'}</td><td>{item.partName || '—'}</td><td>{item.spec || '—'}</td><td>{item.drawingNo || '—'}</td><td>{item.vendor || '—'}</td><td>{item.materialType || '—'}</td><td>{item.dimension || '—'}</td><td>฿{item.unitPrice.toLocaleString()}</td><td>{item.usage}</td><td>{item.comment || '—'}</td><td><span className={`master-status ${item.isActive === false ? 'inactive' : 'active'}`}>{item.isActive === false ? 'ปิดใช้งาน' : 'ใช้งานอยู่'}</span></td><td><div className="row-actions"><button className="icon-button" onClick={() => openEditor(item)} disabled={searching || saving} title="แก้ไข"><Pencil size={16} /></button><button className={`icon-button ${item.isActive === false ? 'reactivate' : ''}`} onClick={() => void changeItemActive(item, item.isActive === false)} disabled={searching || saving} title={item.isActive === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}>{item.isActive === false ? <CheckCircle2 size={16} /> : <Archive size={16} />}</button><button className="icon-button danger" onClick={() => setDeleteTarget(item)} disabled={searching || saving} title="ลบออกจากฐานข้อมูล" aria-label={`ลบ ${item.itemFg || item.partName}`}><Trash2 size={16} /></button></div></td>
+        </tr>)}{!activeRows.length && <tr><td colSpan={13} className="settings-empty-results">{searched[tab] ? 'ไม่พบรายการที่ตรงกับเงื่อนไขค้นหา' : 'กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ'}</td></tr>}</tbody></table></div>
       </section>
       {editorOpen && <aside className="card editor-card">
         <div className="card-header"><div><p className="eyebrow">{activeRows.some((item) => item.id === form.id) ? 'EDIT RECORD' : 'NEW RECORD'}</p><h2>รายละเอียดรายการ</h2></div><button className="icon-button" onClick={() => setEditorOpen(false)}><X size={18} /></button></div>
@@ -193,6 +253,15 @@ export function SettingsPage() {
       </aside>}
     </div>}
     {tab === 'documents' && <DocumentManager />}
+    <DeleteConfirmModal
+      open={Boolean(bulkDeleteTarget)}
+      overlayClassName="settings-bulk-delete-overlay"
+      onClose={() => setBulkDeleteTarget(null)}
+      onConfirm={confirmBulkDelete}
+      title="ลบรายการที่เลือกหรือไม่?"
+      description="ระบบจะลบทีละรายการอย่างถาวร รายการที่มีประวัติ PR อ้างอิงจะไม่ถูกลบ หากบางรายการลบไม่สำเร็จ ระบบจะเก็บรายการนั้นไว้และสรุปผลให้ตรวจสอบ"
+      resourceName={bulkDeleteTarget ? `${bulkDeleteTarget.items.length} รายการ — ${bulkDeleteTarget.items.map((item) => item.itemFg || item.orderCode || item.partName).join(", ")}` : ''}
+    />
     <DeleteConfirmModal
       open={Boolean(deleteTarget)}
       onClose={() => setDeleteTarget(null)}

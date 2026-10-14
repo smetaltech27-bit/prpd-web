@@ -11,6 +11,7 @@ interface DeleteConfirmModalProps {
   resourceName: string
   confirmationValue?: string
   submitLabel?: string
+  overlayClassName?: string
 }
 
 export function DeleteConfirmModal({
@@ -22,6 +23,7 @@ export function DeleteConfirmModal({
   resourceName,
   confirmationValue,
   submitLabel = 'ลบถาวร',
+  overlayClassName = '',
 }: DeleteConfirmModalProps) {
   const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState('')
@@ -69,7 +71,7 @@ export function DeleteConfirmModal({
   }
 
   return createPortal(
-    <div className="modal-overlay delete-confirm-overlay" role="presentation">
+    <div className={`modal-overlay delete-confirm-overlay ${overlayClassName}`} role="presentation">
       <section className="modal-panel delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-description">
         <header className="modal-header">
           <span className="modal-icon danger"><AlertTriangle size={22} /></span>

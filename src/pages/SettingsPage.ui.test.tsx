@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, listFactorySupplies, setMasterItemActive } from '../services/prpdRepository'
+import { createProductionItemWithDocuments, deleteDocumentItem, deleteMasterItem, listAllSettingsMasterItems, listFactorySupplies, setMasterItemActive } from '../services/prpdRepository'
 import { SettingsPage } from './SettingsPage'
 
 vi.mock('../lib/supabase', () => ({ isSupabaseConfigured: true }))
@@ -12,6 +12,7 @@ vi.mock('../services/prpdRepository', () => ({
   deleteMasterItem: vi.fn(),
   findActiveDocuments: vi.fn(async () => []),
   listFactorySupplies: vi.fn(async () => []),
+  listAllSettingsMasterItems: vi.fn(async () => []),
   listRawMaterials: vi.fn(async (_itemFg?: string, includeInactive = false) => includeInactive ? [{
     id: 'raw-inactive', itemFg: 'TM-INACTIVE', partName: 'INACTIVE PART', drawingNo: 'DWG-I',
     spec: 'SPEC-I', orderCode: 'RM-I', vendor: 'VENDOR I', materialType: 'STEEL', dimension: '10x20',
@@ -36,6 +37,8 @@ describe('Settings document search', () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+    vi.mocked(listAllSettingsMasterItems).mockReset()
+    vi.mocked(deleteMasterItem).mockReset()
   })
 
   it('selects the first search result automatically and clears the complete state', async () => {
@@ -86,13 +89,113 @@ describe('Settings document search', () => {
     }])
     render(<SettingsPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Factory Supply / Equipment' }))
-    expect(screen.getAllByRole('columnheader').slice(0, 2).map((cell) => cell.textContent)).toEqual(['CODE RM', 'PART'])
-    expect(screen.getByText('กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ')).toHaveAttribute('colspan', '12')
+    expect(screen.getAllByRole('columnheader').slice(1, 3).map((cell) => cell.textContent)).toEqual(['CODE RM', 'PART'])
+    expect(screen.getByText('กรอกคำค้นหา แล้วกดปุ่มค้นหาเพื่อแสดงรายการ')).toHaveAttribute('colspan', '13')
     fireEvent.change(screen.getByPlaceholderText('ค้นหา Code RM, Item FG, Part, Spec หรือ Vendor…'), { target: { value: ' rm-004 ' } })
     fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
     const codeCell = await screen.findByRole('cell', { name: 'RM-0042' })
     expect(codeCell.nextElementSibling).toHaveTextContent('MACHINE TAP')
     expect(listFactorySupplies).toHaveBeenCalledWith(false)
+  })
+
+
+  const allItems = ['A', 'B'].map((suffix) => ({
+    id: 'master-' + suffix, itemFg: 'FG-' + suffix, partName: 'PART-' + suffix,
+    orderCode: 'RM-' + suffix, vendor: 'VENDOR', spec: '', drawingNo: '',
+    materialType: '', dimension: '', unitPrice: 100, usage: 1, isActive: true,
+  }))
+
+  it.each(['Raw Material', 'Factory Supply / Equipment'])('loads all %s rows and clears search text', async (tabName) => {
+    vi.mocked(listAllSettingsMasterItems).mockResolvedValueOnce(allItems)
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: tabName }))
+    const search = screen.getByPlaceholderText(/ค้นหา .*Part, Spec หรือ Vendor/)
+    fireEvent.change(search, { target: { value: 'NO MATCH' } })
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    expect(await screen.findByText('PART-A')).toBeInTheDocument()
+    expect(screen.getByText('PART-B')).toBeInTheDocument()
+    expect(search).toHaveValue('')
+    expect(listAllSettingsMasterItems).toHaveBeenCalledWith(tabName === 'Raw Material' ? 'raw' : 'equipment', false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'เลือก FG-A' }))
+    expect(screen.getByRole('checkbox', { name: 'เลือกทั้งหมด' })).toBePartiallyChecked()
+    expect(screen.getByRole('status')).toHaveTextContent('เลือก 1 รายการ')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'เลือกทั้งหมด' }))
+    expect(screen.getByRole('status')).toHaveTextContent('เลือก 2 รายการ')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'เลือกทั้งหมด' }))
+    expect(screen.getByRole('button', { name: 'ลบรายการที่เลือก' })).toBeDisabled()
+  })
+
+  it('confirms bulk deletion and retains only failed rows selected', async () => {
+    vi.mocked(listAllSettingsMasterItems).mockResolvedValueOnce(allItems)
+    vi.mocked(deleteMasterItem).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Referenced by PR'))
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    await screen.findByText('PART-A')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'เลือกทั้งหมด' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ลบรายการที่เลือก' }))
+    expect(screen.getByRole('alertdialog', { name: 'ลบรายการที่เลือกหรือไม่?' })).toBeInTheDocument()
+    expect(deleteMasterItem).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'ยกเลิก' }))
+    expect(deleteMasterItem).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'ลบรายการที่เลือก' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ลบถาวร' }))
+    expect(await screen.findByText(/ลบสำเร็จ 1 รายการ; ลบไม่สำเร็จ 1 รายการ/)).toBeInTheDocument()
+    expect(deleteMasterItem).toHaveBeenNthCalledWith(1, 'raw', 'master-A')
+    expect(deleteMasterItem).toHaveBeenNthCalledWith(2, 'raw', 'master-B')
+    expect(screen.queryByText('PART-A')).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'เลือก FG-B' })).toBeChecked()
+  })
+
+  it('deletes only the selected equipment row and clears selection after success', async () => {
+    vi.mocked(listAllSettingsMasterItems).mockResolvedValueOnce(allItems)
+    vi.mocked(deleteMasterItem).mockResolvedValue(undefined)
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Factory Supply / Equipment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    await screen.findByText('PART-A')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'เลือก FG-B' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ลบรายการที่เลือก' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ลบถาวร' }))
+    await screen.findByText('ลบสำเร็จ 1 รายการ')
+    expect(deleteMasterItem).toHaveBeenCalledExactlyOnceWith('equipment', 'master-B')
+    expect(screen.getByText('PART-A')).toBeInTheDocument()
+    expect(screen.queryByText('PART-B')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'ลบรายการที่เลือก' })).toBeDisabled()
+  })
+
+  it('uses the inactive option and clears selection when changing it', async () => {
+    vi.mocked(listAllSettingsMasterItems).mockResolvedValueOnce(allItems)
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'แสดงรายการที่ปิดใช้งาน' }))
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    await screen.findByText('PART-A')
+    expect(listAllSettingsMasterItems).toHaveBeenCalledWith('raw', true)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'เลือกทั้งหมด' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'แสดงรายการที่ปิดใช้งาน' }))
+    expect(screen.queryByText('PART-A')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'ลบรายการที่เลือก' })).toBeDisabled()
+  })
+
+  it('ignores a previous tab request completing after a newer load', async () => {
+    let finish!: (items: typeof allItems) => void
+    vi.mocked(listAllSettingsMasterItems).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+      .mockResolvedValueOnce([allItems[1]])
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Factory Supply / Equipment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    await screen.findByText('PART-B')
+    await act(async () => { finish([allItems[0]]) })
+    expect(screen.queryByText('PART-A')).not.toBeInTheDocument()
+    expect(screen.getByText('PART-B')).toBeInTheDocument()
+  })
+
+  it('reports a failed full load without presenting partial rows', async () => {
+    vi.mocked(listAllSettingsMasterItems).mockRejectedValueOnce(new Error('Network'))
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'แสดงข้อมูลทั้งหมด' }))
+    expect(await screen.findByText('ค้นหาข้อมูลไม่สำเร็จ กรุณาตรวจการเชื่อมต่อ Supabase')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'ลบรายการที่เลือก' })).toBeDisabled()
   })
 
   it('places the horizontal Item Master bar before Private R2 Documents', () => {

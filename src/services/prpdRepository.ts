@@ -249,6 +249,28 @@ export function listFactorySupplies(includeInactive = false): Promise<MaterialIt
   return listMaster('factory_supplies', undefined, includeInactive)
 }
 
+// Settings explicitly loads every page; other screens keep their existing queries.
+export async function listAllSettingsMasterItems(kind: 'raw' | 'equipment', includeInactive = false): Promise<MaterialItem[]> {
+  const client = includeInactive ? settingsSupabase : supabase
+  if (!client) throw new Error('Supabase is not configured')
+  const table = kind === 'raw' ? 'raw_materials' : 'factory_supplies'
+  const typeColumn = kind === 'raw' ? 'material_type' : 'supply_type'
+  const rows: MaterialItem[] = []
+  let offset = 0
+  for (;;) {
+    let query = client.from(table)
+      .select(`id,name_part,spec,dwg_no,item_fg,code_order_rm,${typeColumn},dimension,unit_price,usage_qty,comment,is_active,vendors(name)`)
+      .order('name_part').order('id').range(offset, offset + 499)
+    if (!includeInactive) query = query.eq('is_active', true)
+    const { data, error } = await query
+    if (error) throw error
+    if (!data?.length) return rows
+    rows.push(...(data as unknown as MasterRow[]).map(mapMasterRow))
+    // Advance by actual rows returned, including servers with a smaller row cap.
+    offset += data.length
+  }
+}
+
 export async function listVendorNames(): Promise<string[]> {
   if (!supabase) return []
   const { data, error } = await supabase
