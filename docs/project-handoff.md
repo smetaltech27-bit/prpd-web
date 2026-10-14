@@ -1,6 +1,6 @@
 # PRPD Project Handoff
 
-เอกสารนี้สรุปสถานะของระบบ PRPD เพื่อใช้พัฒนาต่อ ตรวจสอบปัญหา หรือส่งต่องานให้ Developer/AI ตัวอื่น โดยอ้างอิง Codebase และ Git history ณ วันที่ **12 กันยายน 2026** ที่ฐาน Commit `b51ae46` (`fix: show only raw material dimension in print`)
+เอกสารนี้สรุปสถานะของระบบ PRPD เพื่อใช้พัฒนาต่อ ตรวจสอบปัญหา หรือส่งต่องานให้ Developer/AI ตัวอื่น โดยอ้างอิง Codebase และ Git history ณ วันที่ **15 ตุลาคม 2026** ผ่าน Feature Commit `c99ace4` (`feat: export Settings master tables to Excel`)
 
 > เมื่อระบบมีการเปลี่ยนแปลงเชิง Feature, Database, Security, Deployment หรือ Business rule ให้แก้หัวข้อ “การแก้ไขล่าสุด” และส่วนที่เกี่ยวข้องในเอกสารนี้พร้อมกับ Code ทุกครั้ง
 
@@ -149,6 +149,7 @@ Route และการโหลด Master catalog เริ่มที่ `sr
 ### Raw Material / Equipment Master
 
 - Settings ทั้งสองแท็บมีปุ่ม “แสดงข้อมูลทั้งหมด”: ล้างคำค้นหา/Vendor และโหลดทุกหน้าครั้งละไม่เกิน 500 รายการ โดยคงตัวเลือกแสดงรายการที่ปิดใช้งาน; ค่าเริ่มต้นแสดงเฉพาะ Active
+- ปุ่ม “Export Excel” ส่งออกเฉพาะรายการที่กำลังแสดงในตารางของแท็บ Raw Material หรือ Factory Supply / Equipment ตามลำดับคอลัมน์บนจอ โดยตัด Checkbox และคอลัมน์จัดการออก; Raw Material เริ่มด้วย `ITEM FG` ส่วน Equipment เริ่มด้วย `CODE RM`; `PRICE`/`USAGE` เป็นเซลล์ตัวเลขและชื่อไฟล์ใช้วันที่ปฏิทินกรุงเทพฯ รูปแบบ SpreadsheetML `.xls` โดยไม่เพิ่ม Dependency
 - เลือกรายแถวหรือเลือกทั้งหมดจากรายการที่แสดง แล้วกด “ลบรายการที่เลือก” และยืนยันใน Modal; ลบทีละรายการผ่าน RPC เดิม จึงไม่ใช่ Transaction เดียวทั้งชุด หากบางรายการล้มเหลว จะนำออกเฉพาะรายการที่ลบสำเร็จและเก็บรายการที่ล้มเหลวไว้พร้อมการเลือกและข้อความสรุป
 - การค้นหาใหม่/เปลี่ยนแท็บ/เปลี่ยนตัวเลือก Active จะล้างการเลือก; ยกเลิกก่อนยืนยันจะไม่เรียก API ลบ ปุ่มแก้ไข/เปิด–ปิดใช้งาน/ลบรายแถวยังคงอยู่
 - ลบถาวรได้เมื่อไม่มี PR History อ้างอิง Record นั้น
@@ -179,6 +180,7 @@ Migration ที่เกี่ยวข้อง:
 | `src/pages/WorkOrderPage.tsx` | Work Order Preview/Print |
 | `src/pages/HistoryPage.tsx` | PR History, Excel export และ protected delete |
 | `src/pages/SettingsPage.tsx` | Master Data, Production Item และ Document management |
+| `src/features/settings/masterExport.ts` | สร้างและดาวน์โหลด Excel จากรายการ Master ที่แสดงใน Settings |
 | `src/services/prpdRepository.ts` | Supabase queries/RPC และ mapping |
 | `src/services/documentStorage.ts` | สร้าง immutable R2 path และเรียก Worker อ่าน/เขียน/ลบไฟล์ |
 | `src/services/settingsAccess.ts` | Settings login, role check และ inactivity lock |
@@ -280,6 +282,7 @@ npm run check
 
 | Commit | การเปลี่ยนแปลง |
 | --- | --- |
+| `c99ace4` — 15 ตุลาคม 2026 | เพิ่มปุ่ม Export Excel ใน Settings ทั้ง Raw Material และ Factory Supply / Equipment โดยส่งออกแถวที่กำลังแสดงและเรียงคอลัมน์เหมือนตาราง (ไม่รวม Checkbox/จัดการ), ใช้หัว `ITEM FG` หรือ `CODE RM` ตามแท็บ, เก็บ `PRICE`/`USAGE` เป็นตัวเลข, แสดงช่องว่าง/สถานะเหมือนหน้าเว็บ และใช้วันที่กรุงเทพฯ ในชื่อไฟล์; ไม่เพิ่ม Package หรือแก้ Schema/API/Auth; `npm run check` ผ่าน 63 frontend tests + 6 worker tests, Build และ 12 migration static checks; Browser ดาวน์โหลดและ Parse ไฟล์จริงผ่านทั้ง Raw Material 4 รายการกับ Equipment 103 รายการ; Deploy GitHub Pages สำเร็จใน Actions run `38653714377` และ Production HTML/asset `index-CTUllWAi.js` ตอบ HTTP 200 พร้อมพบปุ่ม Export, MIME, หัวตาราง และส่วนประกอบชื่อไฟล์ครบ |
 | `d6abefc` — 14 ตุลาคม 2026 | เพิ่มแสดง Master ทั้งหมดและ Checkbox สำหรับลบหลายรายการใน Settings ทั้ง Raw Material และ Equipment; อ่านข้อมูลครบทุกหน้าพร้อมป้องกันผลโหลดจากแท็บเก่า, ใช้สิทธิ์/RPC เดิม, สรุปผลลบบางส่วน; แก้การ์ดตารางล้นบนมือถือ และจำกัด Modal ลบหลายรายการให้อยู่ในจอแนวนอน; `npm run check` ผ่าน 60 frontend tests + 6 worker tests, Build และ 12 migration static checks; Browser ตรวจด้วยข้อมูลจำลองบน Desktop และ 390×844/844×390 รวมรายการยืนยันสั้นและยาว 103 รายการ; ผู้ใช้ตรวจ Localhost กับข้อมูลจริงผ่านแล้ว; Deploy GitHub Pages สำเร็จใน Actions run `38529713753` และ Production HTML/asset ตอบ HTTP 200 พร้อมพบปุ่มแสดงทั้งหมด, ลบหลายรายการ, ข้อความสรุป และ Logic pagination; ยังไม่ได้ทดสอบ iPhone Safari/Chrome จริงหรือ Toolbar ย่อ–ขยาย และไม่ได้เรียกลบข้อมูลจริงระหว่างการตรวจของ Codex |
 | `0be44f9` — 1 ตุลาคม 2026 | Settings แท็บ Factory Supply / Equipment เพิ่มคอลัมน์ CODE RM ก่อน PART จาก `orderCode` และข้อความช่องค้นหา; ตัวช่วยค้นหา Master รองรับ Code RM แบบบางส่วน ไม่แยกตัวพิมพ์เล็ก–ใหญ่ และยังกรอง Vendor ร่วมกันได้ (Raw Material ใช้ตัวช่วยเดียวกันจึงค้นหารหัสได้ด้วย); ไม่เปลี่ยน Schema หรือขั้นตอนบันทึกข้อมูล; `npm run check` ผ่าน 50 frontend tests, 6 worker tests, Build และ Migration static checks; Deploy GitHub Pages สำเร็จใน Actions run `36829838997` และผู้ใช้ตรวจ Production ผ่านแล้ว |
 | `b51ae46` | หน้า Preview/Print ของ Raw Material แสดงเฉพาะค่า Dimension และไม่ต่อค่า Spec พร้อม Regression test; Deploy GitHub Pages สำเร็จใน Actions run `34680933016` และตรวจ Production/asset ตอบกลับ HTTP 200 |
