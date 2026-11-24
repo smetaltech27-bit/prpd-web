@@ -16,7 +16,8 @@ function displayDate(value: string): string {
 
 export function HistoryPage() {
   const [tab, setTab] = useState<HistoryTab>('raw_material')
-  const [requestDate, setRequestDate] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [prNumber, setPrNumber] = useState('')
   const [vendor, setVendor] = useState('')
   const [itemFg, setItemFg] = useState('')
@@ -37,11 +38,17 @@ export function HistoryPage() {
   }, [allSelected, someSelected])
 
   async function load() {
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setRows([])
+      setSelectedPrIds(new Set())
+      setError('วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด กรุณาเลือกช่วงวันที่ใหม่')
+      return
+    }
     setLoading(true)
     setError('')
     setSelectedPrIds(new Set())
     try {
-      setRows(await searchPrHistory({ kind: tab, requestDate, prNumber, vendor, itemFg, codeOrderRm }))
+      setRows(await searchPrHistory({ kind: tab, dateFrom, dateTo, prNumber, vendor, itemFg, codeOrderRm }))
     } catch (reason) {
       setRows([])
       setError(reason instanceof Error ? reason.message : 'ค้นหาประวัติไม่สำเร็จ')
@@ -96,13 +103,14 @@ export function HistoryPage() {
         <button className={tab === 'factory_supply' ? 'active' : ''} onClick={() => setTab('factory_supply')}>ประวัติวัสดุอุปกรณ์</button>
       </div>
       <form className="history-filters" onSubmit={submit}>
-        <label><span>วันที่</span><input type="date" value={requestDate} onChange={(event) => setRequestDate(event.target.value)} /></label>
+        <label><span>จากวันที่</span><input name="dateFrom" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label>
+        <label><span>ถึงวันที่</span><input name="dateTo" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label>
         <label><span>เลข PR</span><input value={prNumber} onChange={(event) => setPrNumber(event.target.value)} placeholder="PR-2608-…" /></label>
         <label><span>Vendor</span><input value={vendor} onChange={(event) => setVendor(event.target.value)} /></label>
         {tab === 'raw_material' && <label><span>Item FG</span><input value={itemFg} onChange={(event) => setItemFg(event.target.value)} /></label>}
         <label><span>Code RM</span><input value={codeOrderRm} onChange={(event) => setCodeOrderRm(event.target.value)} /></label>
         <button className="button button-primary" disabled={loading}>{loading ? <LoaderCircle className="spin" /> : <Search size={17} />}{loading ? 'กำลังค้นหา…' : 'ค้นหา'}</button>
-        <button className="button button-secondary" type="button" onClick={() => { setRequestDate(''); setPrNumber(''); setVendor(''); setItemFg(''); setCodeOrderRm('') }}><Filter size={17} /> ล้างตัวกรอง</button>
+        <button className="button button-secondary" type="button" onClick={() => { setDateFrom(''); setDateTo(''); setPrNumber(''); setVendor(''); setItemFg(''); setCodeOrderRm(''); setError('') }}><Filter size={17} /> ล้างตัวกรอง</button>
         <button className="button button-secondary" type="button" disabled={loading || !rows.length} onClick={() => downloadHistoryWorkbook(rows, tab)}><FileSpreadsheet size={17} /> Export Excel</button>
       </form>
       <div className="history-selection-toolbar">
@@ -111,7 +119,7 @@ export function HistoryPage() {
         <button className="button button-danger" type="button" disabled={!selectedPrIds.size || loading} onClick={() => setDeleteOpen(true)}><Trash2 size={17} /> ลบประวัติที่เลือก</button>
       </div>
       {notice && <div className="flow-notice success">{notice}</div>}
-      {error && <div className="flow-notice error">{error}</div>}
+      {error && <div className="flow-notice error" role="alert">{error}</div>}
       <div className="table-wrap history-lines-wrap"><table className="data-table history-lines-table"><thead><tr>
         <th className="history-select-column"><input type="checkbox" aria-label="เลือกทั้งหมดในตาราง" checked={allSelected} disabled={!visiblePrIds.length || loading} onChange={toggleAll} /></th><th>No.</th><th>Date</th><th>PR Number</th><th>Vendor</th>{tab === 'raw_material' && <th>Item FG</th>}<th>Code RM</th><th>Name Part</th><th>Type</th><th>Spec</th>{tab === 'raw_material' && <th>จำนวนผลิต</th>}<th>Q’ty</th><th>Price</th><th>Due Date</th><th>Comment</th>
       </tr></thead><tbody>

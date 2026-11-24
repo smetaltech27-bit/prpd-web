@@ -24,6 +24,7 @@ const expectedOrder = [
   '202608270004_production_item_master.sql',
   '202608280001_delete_pr_history.sql',
   '202608310001_delete_settings_records.sql',
+  '202611240001_search_pr_history_range.sql',
 ];
 const errors = [];
 

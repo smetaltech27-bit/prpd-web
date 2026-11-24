@@ -75,3 +75,45 @@ describe('PR history deletion', () => {
     expect(screen.getByText('เลือกแล้ว 2 เลข PR')).toBeInTheDocument()
   })
 })
+
+describe('PR history date range', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('passes an inclusive date range to history search and clears both dates', async () => {
+    vi.mocked(searchPrHistory).mockResolvedValue(historyRows)
+    render(<HistoryPage />)
+    await screen.findByText('PR-2608-0002')
+
+    fireEvent.change(screen.getByLabelText('จากวันที่'), { target: { value: '2026-08-01' } })
+    fireEvent.change(screen.getByLabelText('ถึงวันที่'), { target: { value: '2026-11-30' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+    await waitFor(() => expect(searchPrHistory).toHaveBeenLastCalledWith(expect.objectContaining({
+      dateFrom: '2026-08-01', dateTo: '2026-11-30',
+    })))
+
+    fireEvent.click(screen.getByRole('button', { name: 'ล้างตัวกรอง' }))
+    expect(screen.getByLabelText('จากวันที่')).toHaveValue('')
+    expect(screen.getByLabelText('ถึงวันที่')).toHaveValue('')
+  })
+
+  it('supports an open-ended range and blocks reversed dates', async () => {
+    vi.mocked(searchPrHistory).mockResolvedValue([])
+    render(<HistoryPage />)
+    await waitFor(() => expect(searchPrHistory).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(screen.getByLabelText('จากวันที่'), { target: { value: '2026-08-01' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+    await waitFor(() => expect(searchPrHistory).toHaveBeenLastCalledWith(expect.objectContaining({
+      dateFrom: '2026-08-01', dateTo: '',
+    })))
+
+    const callCount = vi.mocked(searchPrHistory).mock.calls.length
+    fireEvent.change(screen.getByLabelText('ถึงวันที่'), { target: { value: '2026-07-31' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ค้นหา' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด')
+    expect(searchPrHistory).toHaveBeenCalledTimes(callCount)
+  })
+})

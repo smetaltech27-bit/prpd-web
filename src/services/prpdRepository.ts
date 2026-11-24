@@ -102,7 +102,8 @@ interface PrHistoryRpcRow {
 
 export interface PrHistoryFilters {
   kind: 'raw_material' | 'factory_supply'
-  requestDate?: string
+  dateFrom?: string
+  dateTo?: string
   prNumber?: string
   vendor?: string
   itemFg?: string
@@ -350,9 +351,10 @@ export async function discardPurchaseRequestDrafts(prIds: string[]): Promise<num
 
 export async function searchPrHistory(filters: PrHistoryFilters): Promise<PrHistoryLine[]> {
   if (!supabase) return []
-  const { data, error } = await supabase.rpc('search_pr_history', {
+  const { data, error } = await supabase.rpc('search_pr_history_range', {
     p_request_kind: filters.kind,
-    p_request_date: filters.requestDate || null,
+    p_date_from: filters.dateFrom || null,
+    p_date_to: filters.dateTo || null,
     p_pr_number: filters.prNumber?.trim() || null,
     p_vendor: filters.vendor?.trim() || null,
     p_item_fg: filters.itemFg?.trim() || null,
